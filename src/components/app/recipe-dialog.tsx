@@ -13,36 +13,28 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  createIngredient,
-  updateIngredient,
-  deleteIngredient,
-} from "@/actions/ingredient";
+import { createRecipe, updateRecipe, deleteRecipe } from "@/actions/recipe";
 import { DeleteConfirmInline } from "@/components/app/delete-confirm-inline";
-import type { Ingredient } from "@/db/schema";
-
-// 単位入力の候補（datalist）
-const UNIT_OPTIONS = ["g", "kg", "ml", "L", "個", "袋", "本", "枚", "玉", "パック", "箱"];
+import type { Recipe } from "@/db/schema";
 
 type Props = {
   projectId: string;
   // 指定があれば編集モード、なければ追加モード
-  ingredient?: Ingredient;
-  // トリガーに使う要素（カードや追加ボタンなど）
+  recipe?: Recipe;
+  // 追加後に詳細ページへ遷移するか（一覧の「＋追加」では true）
+  redirectOnCreate?: boolean;
   children: React.ReactNode;
 };
 
-export function IngredientDialog({ projectId, ingredient, children }: Props) {
-  const isEdit = Boolean(ingredient);
-  const [open, setOpen]              = useState(false);
-  const [error, setError]            = useState<string | null>(null);
-  // 削除は誤タップ防止のため2段階（ボタン → 確認）にする
+export function RecipeDialog({ projectId, recipe, redirectOnCreate, children }: Props) {
+  const isEdit = Boolean(recipe);
+  const [open, setOpen]                   = useState(false);
+  const [error, setError]                 = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition]      = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const router  = useRouter();
 
-  // ダイアログを閉じたら確認状態・エラーをリセット
   function handleOpenChange(next: boolean) {
     setOpen(next);
     if (!next) {
@@ -58,14 +50,20 @@ export function IngredientDialog({ projectId, ingredient, children }: Props) {
 
     startTransition(async () => {
       try {
-        if (isEdit && ingredient) {
-          await updateIngredient(ingredient.id, projectId, formData);
+        if (isEdit && recipe) {
+          await updateRecipe(recipe.id, projectId, formData);
+          setOpen(false);
+          router.refresh();
         } else {
-          await createIngredient(projectId, formData);
+          const result = await createRecipe(projectId, formData);
           formRef.current?.reset();
+          setOpen(false);
+          if (redirectOnCreate) {
+            router.push(`/projects/${projectId}/recipes/${result.recipeId}`);
+          } else {
+            router.refresh();
+          }
         }
-        setOpen(false);
-        router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "エラーが発生しました");
       }
@@ -73,12 +71,14 @@ export function IngredientDialog({ projectId, ingredient, children }: Props) {
   }
 
   function handleDelete() {
-    if (!ingredient) return;
+    if (!recipe) return;
     setError(null);
     startTransition(async () => {
       try {
-        await deleteIngredient(ingredient.id, projectId);
+        await deleteRecipe(recipe.id, projectId);
         setOpen(false);
+        // 詳細ページから削除した場合は一覧へ戻す
+        router.push(`/projects/${projectId}/recipes`);
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "エラーが発生しました");
@@ -92,17 +92,17 @@ export function IngredientDialog({ projectId, ingredient, children }: Props) {
       <DialogContent className="w-[92vw] max-w-md rounded-2xl">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
-            {isEdit ? "材料を編集" : "材料を追加"}
+            {isEdit ? "商品を編集" : "商品を追加"}
           </DialogTitle>
         </DialogHeader>
         <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="name">材料名 <span className="text-red-500">*</span></Label>
+            <Label htmlFor="name">商品名 <span className="text-red-500">*</span></Label>
             <Input
               id="name"
               name="name"
-              placeholder="例：キャベツ"
-              defaultValue={ingredient?.name ?? ""}
+              placeholder="例：焼きそば"
+              defaultValue={recipe?.name ?? ""}
               required
               autoFocus
             />
@@ -110,73 +110,45 @@ export function IngredientDialog({ projectId, ingredient, children }: Props) {
 
           <div className="flex gap-3">
             <div className="flex flex-col gap-1.5 flex-1">
-              <Label htmlFor="price">単価（円） <span className="text-red-500">*</span></Label>
+              <Label htmlFor="sellingPrice">販売価格（円） <span className="text-red-500">*</span></Label>
               <Input
-                id="price"
-                name="price"
+                id="sellingPrice"
+                name="sellingPrice"
                 type="number"
                 inputMode="decimal"
-                step="0.01"
-                min="0.01"
-                placeholder="198"
-                defaultValue={ingredient?.price ?? ""}
+                step="1"
+                min="1"
+                placeholder="300"
+                defaultValue={recipe?.sellingPrice ?? ""}
                 required
               />
             </div>
             <div className="flex flex-col gap-1.5 flex-1">
-              <Label htmlFor="quantity">購入数量 <span className="text-red-500">*</span></Label>
+              <Label htmlFor="servings">作る予定数</Label>
               <Input
-                id="quantity"
-                name="quantity"
+                id="servings"
+                name="servings"
                 type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0.01"
-                placeholder="1000"
-                defaultValue={ingredient?.quantity ?? ""}
-                required
+                inputMode="numeric"
+                step="1"
+                min="1"
+                placeholder="100"
+                defaultValue={recipe?.servings ?? 1}
               />
             </div>
           </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="unit">単位 <span className="text-red-500">*</span></Label>
-            <Input
-              id="unit"
-              name="unit"
-              list="unit-options"
-              placeholder="g / 袋 / 個 など"
-              defaultValue={ingredient?.unit ?? ""}
-              required
-            />
-            <datalist id="unit-options">
-              {UNIT_OPTIONS.map((u) => (
-                <option key={u} value={u} />
-              ))}
-            </datalist>
-            <p className="text-xs text-zinc-400">
-              「1000g入りを198円で買った」なら 単価=198 / 数量=1000 / 単位=g
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="supplier">仕入れ先</Label>
-            <Input
-              id="supplier"
-              name="supplier"
-              placeholder="例：業務スーパー"
-              defaultValue={ingredient?.supplier ?? ""}
-            />
-          </div>
+          <p className="text-xs text-zinc-400 -mt-2">
+            販売価格は「1個（1皿）あたり」の値段を入れてください。
+          </p>
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="memo">メモ</Label>
             <Textarea
               id="memo"
               name="memo"
-              placeholder="特売日や代替品など"
+              placeholder="盛り付けやトッピングのメモなど"
               rows={2}
-              defaultValue={ingredient?.memo ?? ""}
+              defaultValue={recipe?.memo ?? ""}
             />
           </div>
 
@@ -198,13 +170,13 @@ export function IngredientDialog({ projectId, ingredient, children }: Props) {
               onClick={() => setConfirmDelete(true)}
               className="text-red-500 hover:text-red-600 hover:bg-red-50"
             >
-              この材料を削除
+              この商品を削除
             </Button>
           )}
 
           {isEdit && confirmDelete && (
             <DeleteConfirmInline
-              message={<>この材料を削除しますか？<br />この材料を使っているレシピの構成からも取り除かれます。</>}
+              message={<>この商品を削除しますか？<br />登録した材料の組み合わせも一緒に削除されます。</>}
               isPending={isPending}
               onCancel={() => setConfirmDelete(false)}
               onConfirm={handleDelete}

@@ -6,18 +6,7 @@ import { ingredients } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 import { assertProjectAccess } from "@/db/queries/auth";
-
-// 数値文字列を厳密にパースする
-// parseFloat は "1,000" → 1 のように途中まで読んで誤った値を通すため、
-// カンマ除去後に Number() で全体を検証する（原価計算がズレるのを防ぐ）
-function parsePositiveNumber(raw: string | null, label: string): number {
-  const cleaned = (raw ?? "").trim().replace(/,/g, "");
-  const value   = Number(cleaned);
-  if (cleaned === "" || Number.isNaN(value) || value <= 0) {
-    throw new Error(`${label}は0より大きい数値で入力してください`);
-  }
-  return value;
-}
+import { parsePositiveNumber } from "@/lib/parse";
 
 // FormDataから材料の入力値をパース・バリデーションする共通処理
 function parseIngredientInput(formData: FormData) {
