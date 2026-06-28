@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { setRecipeIngredient, removeRecipeIngredient } from "@/actions/recipe";
 import { IngredientDialog } from "@/components/app/ingredient-dialog";
+import { SelectModal } from "@/components/app/select-modal";
 import { formatYen } from "@/lib/format";
 import type { Ingredient } from "@/db/schema";
 
@@ -56,6 +58,17 @@ export function RecipeIngredientEditor({
   const available = useMemo(
     () => allIngredients.filter((ing) => !usedIds.has(ing.id)),
     [allIngredients, usedIds]
+  );
+
+  // 材料選択モーダル用の選択肢（材料名＋単価）
+  const ingredientOptions = useMemo(
+    () =>
+      available.map((ing) => ({
+        id:        ing.id,
+        primary:   ing.name,
+        secondary: `${ing.quantity}${ing.unit}で${formatYen(ing.price)}`,
+      })),
+    [available]
   );
 
   function handleAdd() {
@@ -150,7 +163,7 @@ export function RecipeIngredientEditor({
             }}
             className="border-amber-300 text-amber-800 hover:bg-amber-50"
           >
-            ＋ 材料を追加
+            <Plus className="w-4 h-4" /> 材料を追加
           </Button>
         )}
 
@@ -160,7 +173,7 @@ export function RecipeIngredientEditor({
             variant="ghost"
             className="text-amber-800 hover:bg-amber-50"
           >
-            ＋ 新しい材料を登録する
+            <Plus className="w-4 h-4" /> 新しい材料を登録する
           </Button>
         </IngredientDialog>
 
@@ -179,20 +192,14 @@ export function RecipeIngredientEditor({
           </DialogHeader>
           <div className="flex flex-col gap-4 mt-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="ingredient-select">材料 <span className="text-red-500">*</span></Label>
-              <select
-                id="ingredient-select"
+              <Label>材料 <span className="text-red-500">*</span></Label>
+              <SelectModal
                 value={selectedId}
-                onChange={(e) => setSelectedId(e.target.value)}
-                className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
-              >
-                <option value="">選んでください</option>
-                {available.map((ing) => (
-                  <option key={ing.id} value={ing.id}>
-                    {ing.name}（{ing.quantity}{ing.unit}で{formatYen(ing.price)}）
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedId}
+                options={ingredientOptions}
+                placeholder="材料を選ぶ"
+                title="材料を選ぶ"
+              />
             </div>
 
             <div className="flex flex-col gap-1.5">

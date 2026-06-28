@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -43,7 +44,7 @@ export function CreateProjectDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="w-full bg-amber-700 hover:bg-amber-800 text-white">
-          ＋ 新しいプロジェクトを作る
+          <Plus className="w-4 h-4" /> 新しいプロジェクトを作る
         </Button>
       </DialogTrigger>
       <DialogContent className="w-[92vw] max-w-md rounded-2xl">

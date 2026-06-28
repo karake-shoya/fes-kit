@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createPrototype, updatePrototype, deletePrototype } from "@/actions/prototype";
 import { DeleteConfirmInline } from "@/components/app/delete-confirm-inline";
+import { SelectModal } from "@/components/app/select-modal";
 import { RESULT_OPTIONS } from "@/lib/prototype";
 import type { PrototypeWithRecipe } from "@/db/queries/prototypes";
 
@@ -32,21 +33,31 @@ export function PrototypeDialog({ projectId, recipes, prototype, children }: Pro
   const [open, setOpen]                   = useState(false);
   const [error, setError]                 = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [recipeId, setRecipeId]           = useState(prototype?.recipeId ?? "");
   const [isPending, startTransition]      = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const router  = useRouter();
+
+  // レシピ選択モーダル用の選択肢
+  const recipeOptions = recipes.map((r) => ({ id: r.id, primary: r.name }));
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
     if (!next) {
       setConfirmDelete(false);
       setError(null);
+      // 閉じたら未保存の選択を破棄（編集モードは元のレシピ、追加モードは未選択へ）
+      setRecipeId(prototype?.recipeId ?? "");
     }
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    if (!recipeId) {
+      setError("レシピを選んでください");
+      return;
+    }
     const formData = new FormData(e.currentTarget);
 
     startTransition(async () => {
@@ -56,6 +67,7 @@ export function PrototypeDialog({ projectId, recipes, prototype, children }: Pro
         } else {
           await createPrototype(projectId, formData);
           formRef.current?.reset();
+          setRecipeId("");
         }
         setOpen(false);
         router.refresh();
@@ -90,22 +102,17 @@ export function PrototypeDialog({ projectId, recipes, prototype, children }: Pro
         </DialogHeader>
         <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="recipeId">レシピ <span className="text-red-500">*</span></Label>
-            <select
-              id="recipeId"
-              name="recipeId"
-              defaultValue={prototype?.recipeId ?? ""}
-              required
-              className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
-            >
-              <option value="" disabled>レシピを選択してください</option>
-              {isRecipeOrphaned && (
-                <option value={prototype!.recipeId} disabled>(削除済みのレシピ)</option>
-              )}
-              {recipes.map((r) => (
-                <option key={r.id} value={r.id}>{r.name}</option>
-              ))}
-            </select>
+            <Label>レシピ <span className="text-red-500">*</span></Label>
+            <input type="hidden" name="recipeId" value={recipeId} />
+            <SelectModal
+              value={recipeId}
+              onChange={setRecipeId}
+              options={recipeOptions}
+              placeholder="レシピを選ぶ"
+              title="レシピを選ぶ"
+              emptyText="先にレシピを登録してください"
+              fallbackLabel={isRecipeOrphaned ? "(削除済みのレシピ)" : undefined}
+            />
           </div>
 
           <div className="flex flex-col gap-1.5">

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft, Settings } from "lucide-react";
 import { requireAuth } from "@/lib/auth";
 import { getRecipeWithCost } from "@/db/queries/recipes";
 import { getIngredients } from "@/db/queries/ingredients";
@@ -34,13 +35,13 @@ export default async function RecipeDetailPage({
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200 px-4 py-4 flex items-center gap-3">
         <Link href={`/projects/${id}/recipes`} className="text-zinc-400 hover:text-zinc-600">
-          ←
+          <ArrowLeft className="w-5 h-5" />
         </Link>
         <h1 className="font-bold text-zinc-800 truncate">{recipe.name}</h1>
         {canEdit && (
           <div className="ml-auto">
             <RecipeDialog projectId={id} recipe={recipe}>
-              <button type="button" className="text-zinc-400 hover:text-zinc-600 text-xl">⚙</button>
+              <button type="button" className="text-zinc-400 hover:text-zinc-600"><Settings className="w-5 h-5" /></button>
             </RecipeDialog>
           </div>
         )}
@@ -71,7 +72,10 @@ export default async function RecipeDetailPage({
                 <span className={`text-3xl font-bold ${style.text}`}>
                   {Math.round(cost.profitRate)}%
                 </span>
-                <span className={`text-sm ${style.text}`}>{style.emoji} {style.label}</span>
+                <span className={`text-sm flex items-center gap-1 ${style.text}`}>
+                  {style.Icon && <style.Icon className="w-4 h-4" />}
+                  {style.label}
+                </span>
               </>
             ) : (
               <span className="text-sm text-zinc-400">材料を追加すると利益率がわかります</span>

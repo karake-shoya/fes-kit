@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { requireAuth } from "@/lib/auth";
 import { getProject, getMyRole } from "@/db/queries/projects";
 import { ProjectSettingsForm } from "@/components/app/project-settings-form";
@@ -26,7 +27,7 @@ export default async function ProjectSettingsPage({
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200 px-4 py-4 flex items-center gap-3">
         <Link href={`/projects/${id}`} className="text-zinc-400 hover:text-zinc-600">
-          ←
+          <ArrowLeft className="w-5 h-5" />
         </Link>
         <h1 className="font-bold text-zinc-800">プロジェクト設定</h1>
       </header>
