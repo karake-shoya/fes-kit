@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ja } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
 import { ymdToDate, dateToYmd } from "@/lib/schedule";
+import { useScheduleMonth } from "@/components/app/schedule-month";
 
 type Props = {
   // タスクが存在する日（YYYY-MM-DD）
@@ -14,6 +15,8 @@ type Props = {
 
 export function ScheduleCalendar({ taskDates, eventDate }: Props) {
   const [selected, setSelected] = useState<Date | undefined>(undefined);
+  // 表示月はヘッダーの「今月」ボタンと共有する
+  const { month, setMonth } = useScheduleMonth();
 
   const taskDateObjs = taskDates.map(ymdToDate);
   const eventDateObj = eventDate ? ymdToDate(eventDate) : undefined;
@@ -32,7 +35,8 @@ export function ScheduleCalendar({ taskDates, eventDate }: Props) {
         selected={selected}
         onSelect={handleSelect}
         locale={ja}
-        defaultMonth={eventDateObj ?? taskDateObjs[0]}
+        month={month}
+        onMonthChange={setMonth}
         modifiers={{
           hasTask:  taskDateObjs,
           eventDay: eventDateObj ? [eventDateObj] : [],

@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createSchedule, updateSchedule, deleteSchedule } from "@/actions/schedule";
 import { DeleteConfirmInline } from "@/components/app/delete-confirm-inline";
-import { STATUS_STYLE, STATUS_ORDER } from "@/lib/schedule";
+import { STATUS_STYLE, STATUS_ORDER, dateToYmd } from "@/lib/schedule";
 import type { Schedule } from "@/db/schema";
 
 type Props = {
@@ -80,7 +80,12 @@ export function ScheduleDialog({ projectId, schedule, children }: Props) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="w-[92vw] max-w-md rounded-2xl">
+      <DialogContent
+        className="w-[92vw] max-w-md rounded-2xl"
+        // 編集時は開いた瞬間に入力欄へフォーカスせず、スマホのキーボードが
+        // 勝手に立ち上がるのを防ぐ（追加時は入力を促したいのでフォーカスする）
+        onOpenAutoFocus={isEdit ? (e) => e.preventDefault() : undefined}
+      >
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
             {isEdit ? "予定を編集" : "予定を追加"}
@@ -95,22 +100,23 @@ export function ScheduleDialog({ projectId, schedule, children }: Props) {
               placeholder="例：仕込み・買い出し"
               defaultValue={schedule?.title ?? ""}
               required
-              autoFocus
+              autoFocus={!isEdit}
             />
           </div>
 
-          <div className="flex gap-3">
-            <div className="flex flex-col gap-1.5 flex-1">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="startDate">開始日 <span className="text-red-500">*</span></Label>
               <Input
                 id="startDate"
                 name="startDate"
                 type="date"
-                defaultValue={schedule?.startDate ?? ""}
+                // 編集時は既存値、追加時は今日を初期表示（手入力の手間を減らす）
+                defaultValue={schedule?.startDate ?? dateToYmd(new Date())}
                 required
               />
             </div>
-            <div className="flex flex-col gap-1.5 flex-1">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="endDate">終了日</Label>
               <Input
                 id="endDate"
