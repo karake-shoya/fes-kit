@@ -63,3 +63,18 @@ export async function getMyRole(projectId: string, userId: string) {
 
   return member?.role ?? null;
 }
+
+// プロジェクトの軽量メタ情報（メンバー一覧を引かずに必要列だけ取得）
+export async function getProjectMeta(projectId: string) {
+  const [project] = await db
+    .select({
+      id:        projects.id,
+      name:      projects.name,
+      eventDate: projects.eventDate,
+    })
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .limit(1);
+
+  return project ?? null;
+}
