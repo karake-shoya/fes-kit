@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft, CalendarDays, Plus, PartyPopper } from "lucide-react";
 import { requireAuth } from "@/lib/auth";
 import { getSchedules } from "@/db/queries/schedules";
 import { getProjectMeta, getMyRole } from "@/db/queries/projects";
@@ -49,14 +50,14 @@ export default async function SchedulePage({
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200 px-4 py-4 flex items-center gap-3">
         <Link href={`/projects/${id}`} className="text-zinc-400 hover:text-zinc-600">
-          ←
+          <ArrowLeft className="w-5 h-5" />
         </Link>
         <h1 className="font-bold text-zinc-800">スケジュール</h1>
         {canEdit && (
           <div className="ml-auto">
             <ScheduleDialog projectId={id}>
               <Button size="sm" className="bg-amber-700 hover:bg-amber-800 text-white">
-                ＋ 追加
+                <Plus className="w-4 h-4" /> 追加
               </Button>
             </ScheduleDialog>
           </div>
@@ -68,11 +69,11 @@ export default async function SchedulePage({
 
         {list.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-12 text-center">
-            <p className="text-4xl">📅</p>
+            <CalendarDays className="w-12 h-12 text-zinc-300" />
             <p className="text-zinc-500 text-sm leading-relaxed">
               まだ予定がありません。<br />
               {canEdit
-                ? "「＋ 追加」で準備や当日の予定を登録しましょう！"
+                ? "「追加」ボタンで準備や当日の予定を登録しましょう！"
                 : "編集者が予定を登録するとここに表示されます。"}
             </p>
           </div>
@@ -84,7 +85,11 @@ export default async function SchedulePage({
                 <section key={day} id={`day-${day}`} className="flex flex-col gap-2 scroll-mt-4">
                   <h2 className={`text-sm font-semibold px-1 ${isEventDay ? EVENT_DAY_STYLE.text : "text-zinc-600"}`}>
                     {formatDayHeading(day)}
-                    {isEventDay && <span className="ml-2">🎉 {EVENT_DAY_STYLE.label}</span>}
+                    {isEventDay && (
+                      <span className="ml-2 inline-flex items-center gap-1">
+                        <PartyPopper className="w-4 h-4" /> {EVENT_DAY_STYLE.label}
+                      </span>
+                    )}
                   </h2>
                   <ul className="flex flex-col gap-2">
                     {items.map((s) => {

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft, ClipboardList, Plus } from "lucide-react";
 import { requireAuth } from "@/lib/auth";
 import { getRecipes } from "@/db/queries/recipes";
 import { getMyRole } from "@/db/queries/projects";
@@ -28,14 +29,14 @@ export default async function RecipesPage({
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200 px-4 py-4 flex items-center gap-3">
         <Link href={`/projects/${id}`} className="text-zinc-400 hover:text-zinc-600">
-          ←
+          <ArrowLeft className="w-5 h-5" />
         </Link>
         <h1 className="font-bold text-zinc-800">レシピ</h1>
         {canEdit && (
           <div className="ml-auto">
             <RecipeDialog projectId={id} redirectOnCreate>
               <Button size="sm" className="bg-amber-700 hover:bg-amber-800 text-white">
-                ＋ 追加
+                <Plus className="w-4 h-4" /> 追加
               </Button>
             </RecipeDialog>
           </div>
@@ -45,11 +46,11 @@ export default async function RecipesPage({
       <main className="px-4 py-6 flex flex-col gap-3 max-w-lg mx-auto">
         {list.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <p className="text-4xl">📋</p>
+            <ClipboardList className="w-12 h-12 text-zinc-300" />
             <p className="text-zinc-500 text-sm leading-relaxed">
               まだ商品がありません。<br />
               {canEdit
-                ? "「＋ 追加」で商品を登録しましょう！"
+                ? "「追加」ボタンで商品を登録しましょう！"
                 : "編集者が商品を登録するとここに表示されます。"}
             </p>
           </div>
@@ -77,7 +78,10 @@ export default async function RecipesPage({
                               <span className="font-bold text-lg leading-none">
                                 {Math.round(cost.profitRate)}%
                               </span>
-                              <span className="text-xs">{style.emoji} {style.label}</span>
+                              <span className="text-xs flex items-center gap-1">
+                                {style.Icon && <style.Icon className="w-3.5 h-3.5" />}
+                                {style.label}
+                              </span>
                             </>
                           ) : (
                             <span className="text-xs">{style.label}</span>

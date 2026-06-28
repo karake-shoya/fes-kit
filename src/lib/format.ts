@@ -7,13 +7,18 @@ export function formatYen(value: number): string {
 }
 
 // 利益率の表示スタイル（黒字＝緑 / 赤字＝赤 / 原価ゼロ＝グレー）
-// ペルソナ（数字が苦手）が一目で判断できるよう絵文字・短いラベルを添える
-export function profitStyle(profitRate: number, hasCost: boolean) {
+// ペルソナ（数字が苦手）が一目で判断できるようアイコン・短いラベルを添える
+import { TrendingUp, TrendingDown, type LucideIcon } from "lucide-react";
+
+export function profitStyle(
+  profitRate: number,
+  hasCost: boolean
+): { text: string; Icon: LucideIcon | null; label: string } {
   if (!hasCost) {
-    return { text: "text-zinc-400", emoji: "—", label: "材料未登録" };
+    return { text: "text-zinc-400", Icon: null, label: "材料未登録" };
   }
   if (profitRate >= 0) {
-    return { text: "text-green-600", emoji: "🙂", label: "黒字" };
+    return { text: "text-green-600", Icon: TrendingUp, label: "黒字" };
   }
-  return { text: "text-red-600", emoji: "😟", label: "赤字（見直そう）" };
+  return { text: "text-red-600", Icon: TrendingDown, label: "赤字（見直そう）" };
 }

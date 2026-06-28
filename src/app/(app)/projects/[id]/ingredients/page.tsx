@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft, ShoppingCart, Plus, ChevronRight } from "lucide-react";
 import { requireAuth } from "@/lib/auth";
 import { getIngredients } from "@/db/queries/ingredients";
 import { getMyRole } from "@/db/queries/projects";
@@ -27,14 +28,14 @@ export default async function IngredientsPage({
     <div className="min-h-screen bg-zinc-50">
       <header className="bg-white border-b border-zinc-200 px-4 py-4 flex items-center gap-3">
         <Link href={`/projects/${id}`} className="text-zinc-400 hover:text-zinc-600">
-          ←
+          <ArrowLeft className="w-5 h-5" />
         </Link>
         <h1 className="font-bold text-zinc-800">材料マスタ</h1>
         {canEdit && (
           <div className="ml-auto">
             <IngredientDialog projectId={id}>
               <Button size="sm" className="bg-amber-700 hover:bg-amber-800 text-white">
-                ＋ 追加
+                <Plus className="w-4 h-4" /> 追加
               </Button>
             </IngredientDialog>
           </div>
@@ -44,11 +45,11 @@ export default async function IngredientsPage({
       <main className="px-4 py-6 flex flex-col gap-3 max-w-lg mx-auto">
         {list.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <p className="text-4xl">🛒</p>
+            <ShoppingCart className="w-12 h-12 text-zinc-300" />
             <p className="text-zinc-500 text-sm leading-relaxed">
               まだ材料がありません。<br />
               {canEdit
-                ? "「＋ 追加」から食材を登録しましょう！"
+                ? "「追加」ボタンから食材を登録しましょう！"
                 : "編集者が材料を登録するとここに表示されます。"}
             </p>
           </div>
@@ -67,7 +68,7 @@ export default async function IngredientsPage({
                         <span className="text-xs text-zinc-400">仕入れ: {ing.supplier}</span>
                       )}
                     </div>
-                    {canEdit && <span className="shrink-0 text-zinc-300">›</span>}
+                    {canEdit && <ChevronRight className="shrink-0 w-5 h-5 text-zinc-300" />}
                   </div>
                 </div>
               );

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UtensilsCrossed, CalendarDays } from "lucide-react";
 import { requireAuth } from "@/lib/auth";
 import { getMyProjects } from "@/db/queries/projects";
 import { CreateProjectDialog } from "@/components/app/create-project-dialog";
@@ -24,7 +25,7 @@ export default async function DashboardPage() {
 
         {projects.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <p className="text-4xl">🥢</p>
+            <UtensilsCrossed className="w-12 h-12 text-zinc-300" />
             <p className="text-zinc-500 text-sm leading-relaxed">
               まだプロジェクトがありません。<br />
               上のボタンから最初のプロジェクトを作りましょう！
@@ -40,8 +41,8 @@ export default async function DashboardPage() {
                       <div className="flex flex-col gap-0.5 min-w-0">
                         <span className="font-semibold text-zinc-800 truncate">{p.name}</span>
                         {p.eventDate && (
-                          <span className="text-xs text-zinc-500">
-                            📅 {p.eventDate.replace(/-/g, "/")}
+                          <span className="text-xs text-zinc-500 inline-flex items-center gap-1">
+                            <CalendarDays className="w-3.5 h-3.5" /> {p.eventDate.replace(/-/g, "/")}
                           </span>
                         )}
                         {p.description && (
