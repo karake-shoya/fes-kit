@@ -1,5 +1,6 @@
 import { parseISO, eachDayOfInterval, format, isValid } from "date-fns";
 import { ja } from "date-fns/locale";
+import type { Schedule } from "@/db/schema";
 
 // ステータス色定義（CLAUDE.md準拠）
 export const STATUS_STYLE = {
@@ -58,4 +59,29 @@ export function ymdToDate(ymd: string): Date {
 // Date を "YYYY-MM-DD"（ローカル基準）に変換する
 export function dateToYmd(date: Date): string {
   return format(date, "yyyy-MM-dd");
+}
+
+// 開始日でグループ化する（list は startDate 昇順前提）。
+// 各グループ内はステータス順（未着手→進行中→完了）に並べ、
+// 同ステータス内は元の安定順（id 昇順）を保つ。
+export function groupSchedulesByDay(list: Schedule[]): [string, Schedule[]][] {
+  const groups = new Map<string, Schedule[]>();
+  for (const s of list) {
+    const g = groups.get(s.startDate) ?? [];
+    g.push(s);
+    groups.set(s.startDate, g);
+  }
+  for (const g of groups.values()) {
+    g.sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status));
+  }
+  return Array.from(groups.entries());
+}
+
+// ステータスでグループ化する（STATUS_ORDER の順で返す）。
+// list は startDate 昇順前提のため、各グループ内は自然に日付順になる。
+// 該当タスクが0件のステータスは返さない。
+export function groupSchedulesByStatus(list: Schedule[]): [ScheduleStatus, Schedule[]][] {
+  return STATUS_ORDER.map(
+    (status) => [status, list.filter((s) => s.status === status)] as [ScheduleStatus, Schedule[]]
+  ).filter(([, items]) => items.length > 0);
 }

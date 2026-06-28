@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createSchedule, updateSchedule, deleteSchedule } from "@/actions/schedule";
-import { DeleteConfirmInline } from "@/components/app/delete-confirm-inline";
+import { ConfirmDeleteDialog } from "@/components/app/confirm-delete-dialog";
 import { STATUS_STYLE, STATUS_ORDER, dateToYmd } from "@/lib/schedule";
 import type { Schedule } from "@/db/schema";
 
@@ -69,8 +69,14 @@ export function ScheduleDialog({ projectId, schedule, children }: Props) {
     startTransition(async () => {
       try {
         await deleteSchedule(schedule.id, projectId);
-        setOpen(false);
-        router.refresh();
+        // ネストした Dialog を同一フレームで同時に閉じると Radix の
+        // スクロールロック解除が取りこぼされ画面が操作不能になることがある。
+        // 内側（確認モーダル）→外側（編集ダイアログ）の順に閉じる。
+        setConfirmDelete(false);
+        setTimeout(() => {
+          setOpen(false);
+          router.refresh();
+        }, 150);
       } catch (err) {
         setError(err instanceof Error ? err.message : "エラーが発生しました");
       }
@@ -165,7 +171,7 @@ export function ScheduleDialog({ projectId, schedule, children }: Props) {
             {isPending ? "保存中…" : isEdit ? "変更を保存" : "追加する"}
           </Button>
 
-          {isEdit && !confirmDelete && (
+          {isEdit && (
             <Button
               type="button"
               variant="ghost"
@@ -176,17 +182,18 @@ export function ScheduleDialog({ projectId, schedule, children }: Props) {
               この予定を削除
             </Button>
           )}
-
-          {isEdit && confirmDelete && (
-            <DeleteConfirmInline
-              message="この予定を削除しますか？"
-              isPending={isPending}
-              onCancel={() => setConfirmDelete(false)}
-              onConfirm={handleDelete}
-            />
-          )}
         </form>
       </DialogContent>
+
+      {isEdit && (
+        <ConfirmDeleteDialog
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          isPending={isPending}
+          onConfirm={handleDelete}
+          message={<>「{schedule?.title}」を削除します。<br />この操作は取り消せません。</>}
+        />
+      )}
     </Dialog>
   );
 }
