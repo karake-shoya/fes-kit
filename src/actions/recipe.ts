@@ -6,6 +6,7 @@ import { recipes, recipeIngredients, ingredients } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 import { assertProjectAccess } from "@/db/queries/auth";
+import { assertRecipeInProject } from "@/db/queries/recipes";
 import { parsePositiveNumber, parsePositiveInt } from "@/lib/parse";
 
 // FormDataからレシピ本体の入力値をパース・バリデーションする
@@ -20,16 +21,6 @@ function parseRecipeInput(formData: FormData) {
   const servings = parsePositiveInt(formData.get("servings") as string | null, "作る予定数", 1);
 
   return { name, memo, sellingPrice, servings };
-}
-
-// recipeId が当該プロジェクトのレシピか照合する（越境防止）
-async function assertRecipeInProject(recipeId: string, projectId: string) {
-  const [recipe] = await db
-    .select({ id: recipes.id })
-    .from(recipes)
-    .where(and(eq(recipes.id, recipeId), eq(recipes.projectId, projectId)))
-    .limit(1);
-  if (!recipe) throw new Error("レシピが見つかりません");
 }
 
 // ingredientId が当該プロジェクトの材料か照合する（越境防止）

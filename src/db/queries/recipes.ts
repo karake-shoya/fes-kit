@@ -1,6 +1,6 @@
 import { db } from "@/db/db";
 import { recipes, recipeIngredients, ingredients } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Recipe } from "@/db/schema";
 
 // 利益率計算に必要な材料行の型
@@ -113,4 +113,24 @@ export async function getRecipeWithCost(
     .where(eq(recipeIngredients.recipeId, recipeId));
 
   return { recipe, cost: calcRecipeCost(recipe.sellingPrice, rows) };
+}
+
+// レシピのid・nameのみ取得（ドロップダウン用軽量クエリ）
+export async function getRecipeNames(projectId: string) {
+  return db
+    .select({ id: recipes.id, name: recipes.name })
+    .from(recipes)
+    .where(eq(recipes.projectId, projectId))
+    .orderBy(recipes.name, recipes.id);
+}
+
+// recipeId が当該プロジェクトのレシピか照合する（越境防止）
+// actions/recipe.ts・actions/prototype.ts で共用
+export async function assertRecipeInProject(recipeId: string, projectId: string) {
+  const [recipe] = await db
+    .select({ id: recipes.id })
+    .from(recipes)
+    .where(and(eq(recipes.id, recipeId), eq(recipes.projectId, projectId)))
+    .limit(1);
+  if (!recipe) throw new Error("レシピが見つかりません");
 }
