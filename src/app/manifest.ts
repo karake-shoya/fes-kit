@@ -5,10 +5,10 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'FesKit',
     short_name: 'FesKit',
     description: '模擬店出店管理アプリ',
-    start_url: '/',
+    start_url: '/dashboard',
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#faf8f5',
+    background_color: '#2b1a0d',
     theme_color: '#2b1a0d',
     icons: [
       {
@@ -18,10 +18,10 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: 'any',
       },
       {
-        src: '/apple-icon',
-        sizes: '180x180',
+        src: '/icon',
+        sizes: '512x512',
         type: 'image/png',
-        purpose: 'any',
+        purpose: 'maskable',
       },
     ],
   }
