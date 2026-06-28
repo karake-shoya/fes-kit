@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { setRecipeIngredient, removeRecipeIngredient } from "@/actions/recipe";
+import { IngredientDialog } from "@/components/app/ingredient-dialog";
 import { formatYen } from "@/lib/format";
 import type { Ingredient } from "@/db/schema";
 
@@ -139,26 +140,36 @@ export function RecipeIngredientEditor({
         <p className="text-sm text-red-500">{error}</p>
       )}
 
-      {available.length > 0 ? (
-        <Button
-          variant="outline"
-          onClick={() => {
-            setAddOpen(true);
-            setError(null);
-          }}
-          className="border-amber-300 text-amber-800 hover:bg-amber-50"
-        >
-          ＋ 材料を追加
-        </Button>
-      ) : allIngredients.length === 0 ? (
-        <p className="text-xs text-zinc-400 text-center">
-          先に「材料マスタ」で食材を登録してください
-        </p>
-      ) : (
-        <p className="text-xs text-zinc-400 text-center">
-          材料マスタの食材はすべて追加済みです
-        </p>
-      )}
+      <div className="flex flex-col gap-2">
+        {available.length > 0 && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              setAddOpen(true);
+              setError(null);
+            }}
+            className="border-amber-300 text-amber-800 hover:bg-amber-50"
+          >
+            ＋ 材料を追加
+          </Button>
+        )}
+
+        {/* 材料マスタに無い食材を、このページから直接登録できる */}
+        <IngredientDialog projectId={projectId}>
+          <Button
+            variant="ghost"
+            className="text-amber-800 hover:bg-amber-50"
+          >
+            ＋ 新しい材料を登録する
+          </Button>
+        </IngredientDialog>
+
+        {available.length === 0 && allIngredients.length > 0 && (
+          <p className="text-xs text-zinc-400 text-center">
+            登録済みの材料はすべて追加済みです
+          </p>
+        )}
+      </div>
 
       {/* 材料追加ダイアログ */}
       <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) setError(null); }}>

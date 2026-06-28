@@ -89,7 +89,13 @@ export function RecipeDialog({ projectId, recipe, redirectOnCreate, children }: 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="w-[92vw] max-w-md rounded-2xl">
+      <DialogContent
+        className="w-[92vw] max-w-md rounded-2xl"
+        // 編集時は開いた瞬間にキーボードが立ち上がらないよう自動フォーカスを無効化
+        onOpenAutoFocus={(e) => {
+          if (isEdit) e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
             {isEdit ? "商品を編集" : "商品を追加"}
@@ -104,7 +110,8 @@ export function RecipeDialog({ projectId, recipe, redirectOnCreate, children }: 
               placeholder="例：焼きそば"
               defaultValue={recipe?.name ?? ""}
               required
-              autoFocus
+              // 追加モードのみ自動フォーカス（編集モードはキーボードを出さない）
+              autoFocus={!isEdit}
             />
           </div>
 

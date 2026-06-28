@@ -89,7 +89,13 @@ export function IngredientDialog({ projectId, ingredient, children }: Props) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="w-[92vw] max-w-md rounded-2xl">
+      <DialogContent
+        className="w-[92vw] max-w-md rounded-2xl"
+        // 編集時は開いた瞬間にキーボードが立ち上がらないよう自動フォーカスを無効化
+        onOpenAutoFocus={(e) => {
+          if (isEdit) e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
             {isEdit ? "材料を編集" : "材料を追加"}
@@ -104,7 +110,8 @@ export function IngredientDialog({ projectId, ingredient, children }: Props) {
               placeholder="例：キャベツ"
               defaultValue={ingredient?.name ?? ""}
               required
-              autoFocus
+              // 追加モードのみ自動フォーカス（編集モードはキーボードを出さない）
+              autoFocus={!isEdit}
             />
           </div>
 
