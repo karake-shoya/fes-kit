@@ -5,11 +5,13 @@ import { redirect } from "next/navigation";
 import { db } from "@/db/db";
 import { projects, projectMembers } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireUser } from "@/lib/auth";
 import { assertProjectAccess } from "@/db/queries/auth";
 
 export async function createProject(formData: FormData) {
-  const userId = await requireAuth();
+  // requireUser() でWebhook未着時もDBにユーザーをUPSERTしてからFK制約を通す
+  const user = await requireUser();
+  const userId = user.id;
 
   const name        = (formData.get("name") as string | null)?.trim();
   const description = (formData.get("description") as string | null)?.trim() || null;
