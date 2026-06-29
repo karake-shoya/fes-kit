@@ -78,6 +78,28 @@ export async function deleteRecipe(recipeId: string, projectId: string) {
   revalidatePath(`/projects/${projectId}/recipes`);
 }
 
+// 販売価格のみを更新する軽量アクション（スライダーのドラッグ確定時に呼ぶ）
+// 本体編集ダイアログを開かずに価格を直接調整できるようにする
+export async function setRecipeSellingPrice(
+  recipeId: string,
+  projectId: string,
+  sellingPriceRaw: string | number
+) {
+  const userId = await requireAuth();
+  await assertProjectAccess(projectId, userId, "editor");
+  await assertRecipeInProject(recipeId, projectId);
+
+  const sellingPrice = parsePositiveNumber(String(sellingPriceRaw), "販売価格");
+
+  await db
+    .update(recipes)
+    .set({ sellingPrice, updatedAt: new Date().toISOString() })
+    .where(and(eq(recipes.id, recipeId), eq(recipes.projectId, projectId)));
+
+  revalidatePath(`/projects/${projectId}/recipes`);
+  revalidatePath(`/projects/${projectId}/recipes/${recipeId}`);
+}
+
 // レシピに材料を追加、または使用量を更新する（upsert）
 export async function setRecipeIngredient(
   recipeId: string,
