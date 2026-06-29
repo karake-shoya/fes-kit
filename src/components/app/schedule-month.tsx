@@ -53,7 +53,7 @@ export function TodayButton() {
       size="sm"
       variant="outline"
       onClick={() => setMonth(startOfMonth(today))}
-      className="border-amber-300 text-amber-800 hover:bg-amber-50"
+      className="border-primary/30 text-primary hover:bg-primary/10"
     >
       <CalendarDays className="w-4 h-4" /> 今月
     </Button>

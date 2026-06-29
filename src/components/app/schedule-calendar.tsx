@@ -44,15 +44,15 @@ export function ScheduleCalendar({ taskDates, eventDate }: Props) {
         modifiersClassNames={{
           // タスクがある日: 下部にオレンジ寄りのドット
           hasTask:
-            "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-1.5 after:w-1.5 after:rounded-full after:bg-amber-500 after:content-['']",
+            "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-1.5 after:w-1.5 after:rounded-full after:bg-primary/100 after:content-['']",
           // イベント当日: オレンジのリングで強調
           eventDay: "ring-2 ring-orange-400 rounded-full font-bold text-orange-600",
         }}
-        className="rounded-2xl border border-zinc-200 bg-white"
+        className="rounded-2xl border border-border bg-card"
       />
-      <div className="flex items-center gap-4 text-xs text-zinc-500">
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> 予定あり
+          <span className="h-1.5 w-1.5 rounded-full bg-primary/100" /> 予定あり
         </span>
         {eventDate && (
           <span className="flex items-center gap-1">

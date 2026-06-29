@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ClipboardList, Plus } from "lucide-react";
+import { ClipboardList, Plus } from "lucide-react";
 import { requireAuth } from "@/lib/auth";
 import { getRecipes } from "@/db/queries/recipes";
 import { getMyRole } from "@/db/queries/projects";
 import { RecipeDialog } from "@/components/app/recipe-dialog";
+import { AppHeader } from "@/components/app/app-header";
 import { Button } from "@/components/ui/button";
 import { formatYen, profitStyle } from "@/lib/format";
 
@@ -26,28 +27,26 @@ export default async function RecipesPage({
   const canEdit = myRole === "owner" || myRole === "editor";
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <header className="bg-white border-b border-zinc-200 px-4 py-4 flex items-center gap-3">
-        <Link href={`/projects/${id}`} className="text-zinc-400 hover:text-zinc-600">
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <h1 className="font-bold text-zinc-800">レシピ</h1>
-        {canEdit && (
-          <div className="ml-auto">
+    <div className="min-h-screen bg-background">
+      <AppHeader
+        title="レシピ"
+        backHref={`/projects/${id}`}
+        action={
+          canEdit && (
             <RecipeDialog projectId={id} redirectOnCreate>
-              <Button size="sm" className="bg-amber-700 hover:bg-amber-800 text-white">
+              <Button size="sm">
                 <Plus className="w-4 h-4" /> 追加
               </Button>
             </RecipeDialog>
-          </div>
-        )}
-      </header>
+          )
+        }
+      />
 
       <main className="px-4 py-6 flex flex-col gap-3 max-w-lg mx-auto">
         {list.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <ClipboardList className="w-12 h-12 text-zinc-300" />
-            <p className="text-zinc-500 text-sm leading-relaxed">
+            <ClipboardList className="w-12 h-12 text-muted-foreground/40" />
+            <p className="text-muted-foreground text-sm leading-relaxed">
               まだ商品がありません。<br />
               {canEdit
                 ? "「追加」ボタンで商品を登録しましょう！"
@@ -63,11 +62,11 @@ export default async function RecipesPage({
               return (
                 <li key={recipe.id}>
                   <Link href={`/projects/${id}/recipes/${recipe.id}`}>
-                    <div className="bg-white rounded-2xl border border-zinc-200 px-4 py-4 shadow-sm active:scale-[0.98] transition-transform">
+                    <div className="bg-card rounded-2xl border border-border px-4 py-4 shadow-sm active:scale-[0.98] transition-transform">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex flex-col gap-0.5 min-w-0">
-                          <span className="font-semibold text-zinc-800 truncate">{recipe.name}</span>
-                          <span className="text-sm text-zinc-500">
+                          <span className="font-semibold text-foreground truncate">{recipe.name}</span>
+                          <span className="text-sm text-muted-foreground">
                             販売 {formatYen(recipe.sellingPrice)}
                             {hasCost && <> ／ 原価 {formatYen(cost.totalCost)}</>}
                           </span>

@@ -161,7 +161,7 @@ export function IngredientDialog({ projectId, ingredient, children }: Props) {
                 <option key={u} value={u} />
               ))}
             </datalist>
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs text-muted-foreground/70">
               「1000g入りを198円で買った」なら 単価=198 / 数量=1000 / 単位=g
             </p>
           </div>
@@ -192,7 +192,6 @@ export function IngredientDialog({ projectId, ingredient, children }: Props) {
           <Button
             type="submit"
             disabled={isPending}
-            className="bg-amber-700 hover:bg-amber-800 text-white"
           >
             {isPending ? "保存中…" : isEdit ? "変更を保存" : "追加する"}
           </Button>

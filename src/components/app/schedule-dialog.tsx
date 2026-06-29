@@ -132,7 +132,7 @@ export function ScheduleDialog({ projectId, schedule, children }: Props) {
               />
             </div>
           </div>
-          <p className="text-xs text-zinc-400 -mt-2">
+          <p className="text-xs text-muted-foreground/70 -mt-2">
             1日で終わる予定は終了日を空欄でOKです。
           </p>
 
@@ -142,7 +142,7 @@ export function ScheduleDialog({ projectId, schedule, children }: Props) {
               id="status"
               name="status"
               defaultValue={schedule?.status ?? "todo"}
-              className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+              className="h-9 rounded-md border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {STATUS_ORDER.map((s) => (
                 <option key={s} value={s}>{STATUS_STYLE[s].label}</option>
@@ -166,7 +166,6 @@ export function ScheduleDialog({ projectId, schedule, children }: Props) {
           <Button
             type="submit"
             disabled={isPending}
-            className="bg-amber-700 hover:bg-amber-800 text-white"
           >
             {isPending ? "保存中…" : isEdit ? "変更を保存" : "追加する"}
           </Button>

@@ -1,12 +1,12 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import { requireAuth } from "@/lib/auth";
 import { getRecipeWithCost } from "@/db/queries/recipes";
 import { getIngredients } from "@/db/queries/ingredients";
 import { getMyRole } from "@/db/queries/projects";
 import { RecipeDialog } from "@/components/app/recipe-dialog";
 import { RecipeProfitPanel } from "@/components/app/recipe-profit-panel";
+import { AppHeader } from "@/components/app/app-header";
 
 export default async function RecipeDetailPage({
   params,
@@ -29,22 +29,26 @@ export default async function RecipeDetailPage({
   const canEdit = myRole === "owner" || myRole === "editor";
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <header className="bg-white border-b border-zinc-200 px-4 py-4 flex items-center gap-3">
-        <Link href={`/projects/${id}/recipes`} className="text-zinc-400 hover:text-zinc-600">
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <h1 className="font-bold text-zinc-800 truncate">{recipe.name}</h1>
-        {canEdit && (
-          <div className="ml-auto">
+    <div className="min-h-screen bg-background">
+      <AppHeader
+        title={recipe.name}
+        backHref={`/projects/${id}/recipes`}
+        action={
+          canEdit && (
             <RecipeDialog projectId={id} recipe={recipe}>
-              <button type="button" className="text-zinc-400 hover:text-zinc-600"><Settings className="w-5 h-5" /></button>
+              <button
+                type="button"
+                aria-label="レシピ設定"
+                className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
             </RecipeDialog>
-          </div>
-        )}
-      </header>
+          )
+        }
+      />
 
-      <main className="px-4 py-6 flex flex-col gap-6 max-w-lg mx-auto">
+      <main className="px-4 py-6 flex flex-col gap-4 max-w-lg mx-auto">
         <RecipeProfitPanel
           recipe={{ id: recipe.id, sellingPrice: recipe.sellingPrice, servings: recipe.servings }}
           projectId={id}
@@ -54,8 +58,8 @@ export default async function RecipeDetailPage({
         />
 
         {recipe.memo && (
-          <section className="bg-white rounded-2xl border border-zinc-200 px-4 py-3">
-            <p className="text-sm text-zinc-600 whitespace-pre-wrap">{recipe.memo}</p>
+          <section className="bg-card rounded-2xl border border-border px-4 py-3">
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{recipe.memo}</p>
           </section>
         )}
       </main>

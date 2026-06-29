@@ -6,6 +6,19 @@ export function formatYen(value: number): string {
   return `${sign}¥${Math.abs(rounded).toLocaleString()}`;
 }
 
+// 日付表示（YYYY-MM-DD → YYYY/MM/DD）。空・未設定は空文字を返す。
+export function formatDate(value: string | null | undefined): string {
+  if (!value) return "";
+  return value.replace(/-/g, "/");
+}
+
+// プロジェクトのロールラベル（owner / editor / viewer → 日本語）
+export const ROLE_LABEL = {
+  owner:  "オーナー",
+  editor: "編集者",
+  viewer: "閲覧者",
+} as const;
+
 // 利益率の表示スタイル（黒字＝緑 / 赤字＝赤 / 原価ゼロ＝グレー）
 // ペルソナ（数字が苦手）が一目で判断できるようアイコン・短いラベルを添える
 import { TrendingUp, TrendingDown, type LucideIcon } from "lucide-react";
@@ -15,7 +28,7 @@ export function profitStyle(
   hasCost: boolean
 ): { text: string; Icon: LucideIcon | null; label: string } {
   if (!hasCost) {
-    return { text: "text-zinc-400", Icon: null, label: "材料未登録" };
+    return { text: "text-muted-foreground/70", Icon: null, label: "材料未登録" };
   }
   if (profitRate >= 0) {
     return { text: "text-green-600", Icon: TrendingUp, label: "黒字" };

@@ -144,7 +144,7 @@ export function RecipeDialog({ projectId, recipe, redirectOnCreate, children }: 
               />
             </div>
           </div>
-          <p className="text-xs text-zinc-400 -mt-2">
+          <p className="text-xs text-muted-foreground/70 -mt-2">
             販売価格は「1個（1皿）あたり」の値段を入れてください。
           </p>
 
@@ -164,7 +164,6 @@ export function RecipeDialog({ projectId, recipe, redirectOnCreate, children }: 
           <Button
             type="submit"
             disabled={isPending}
-            className="bg-amber-700 hover:bg-amber-800 text-white"
           >
             {isPending ? "保存中…" : isEdit ? "変更を保存" : "追加する"}
           </Button>

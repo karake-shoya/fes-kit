@@ -166,7 +166,7 @@ export function PrototypeDialog({ projectId, recipes, prototype, children }: Pro
               id="result"
               name="result"
               defaultValue={prototype?.result ?? "needs_improvement"}
-              className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+              className="h-9 rounded-md border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {RESULT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -220,7 +220,7 @@ export function PrototypeDialog({ projectId, recipes, prototype, children }: Pro
                 type="button"
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading || isPending}
-                className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 py-8 text-zinc-500 hover:bg-zinc-100 disabled:opacity-60"
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border bg-background py-8 text-muted-foreground hover:bg-muted disabled:opacity-60"
               >
                 <ImagePlus className="w-6 h-6" />
                 <span className="text-sm">{uploading ? "アップロード中…" : "写真を選ぶ"}</span>
@@ -233,7 +233,6 @@ export function PrototypeDialog({ projectId, recipes, prototype, children }: Pro
           <Button
             type="submit"
             disabled={isPending || uploading}
-            className="bg-amber-700 hover:bg-amber-800 text-white"
           >
             {isPending ? "保存中…" : uploading ? "写真を処理中…" : isEdit ? "変更を保存" : "追加する"}
           </Button>

@@ -43,7 +43,7 @@ export function CreateProjectDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full bg-amber-700 hover:bg-amber-800 text-white">
+        <Button className="w-full">
           <Plus className="w-4 h-4" /> 新しいプロジェクトを作る
         </Button>
       </DialogTrigger>
@@ -85,7 +85,6 @@ export function CreateProjectDialog() {
           <Button
             type="submit"
             disabled={isPending}
-            className="bg-amber-700 hover:bg-amber-800 text-white"
           >
             {isPending ? "作成中…" : "作成する"}
           </Button>

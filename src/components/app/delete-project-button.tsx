@@ -42,7 +42,7 @@ export function DeleteProjectButton({ projectId }: Props) {
         <DialogHeader>
           <DialogTitle className="text-red-600">本当に削除しますか？</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-muted-foreground">
           材料・レシピ・スケジュール・試作記録がすべて削除されます。この操作は元に戻せません。
         </p>
         {error && <p className="text-sm text-red-500">{error}</p>}
