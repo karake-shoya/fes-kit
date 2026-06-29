@@ -7,6 +7,7 @@ import { and, eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 import { assertProjectAccess } from "@/db/queries/auth";
 import { assertRecipeInProject } from "@/db/queries/recipes";
+import { deletePrototypeImage } from "@/lib/r2";
 
 const VALID_RESULTS = ["good", "needs_improvement", "failed"] as const;
 type PrototypeResult = (typeof VALID_RESULTS)[number];
@@ -28,10 +29,11 @@ function parsePrototypeInput(formData: FormData) {
   return { recipeId, triedAt, result, memo, imageUrl };
 }
 
-// prototype_logs が当該プロジェクトに属するか確認する（越境防止）
+// prototype_logs が当該プロジェクトに属するか確認する（越境防止）。
+// 既存の写真URLも返す（差し替え・削除時のR2クリーンアップに使用）。
 async function assertPrototypeInProject(prototypeId: string, projectId: string) {
   const [row] = await db
-    .select({ id: prototypeLogs.id })
+    .select({ id: prototypeLogs.id, imageUrl: prototypeLogs.imageUrl })
     .from(prototypeLogs)
     .innerJoin(recipes, and(
       eq(recipes.id, prototypeLogs.recipeId),
@@ -40,6 +42,7 @@ async function assertPrototypeInProject(prototypeId: string, projectId: string) 
     .where(eq(prototypeLogs.id, prototypeId))
     .limit(1);
   if (!row) throw new Error("試作記録が見つかりません");
+  return row;
 }
 
 export async function createPrototype(projectId: string, formData: FormData) {
@@ -65,7 +68,7 @@ export async function updatePrototype(
 ) {
   const userId = await requireAuth();
   await assertProjectAccess(projectId, userId, "editor");
-  await assertPrototypeInProject(prototypeId, projectId);
+  const existing = await assertPrototypeInProject(prototypeId, projectId);
 
   const input = parsePrototypeInput(formData);
   await assertRecipeInProject(input.recipeId, projectId);
@@ -75,17 +78,25 @@ export async function updatePrototype(
     .set(input)
     .where(eq(prototypeLogs.id, prototypeId));
 
+  // 写真が差し替え・削除された場合は古いオブジェクトを掃除する
+  if (existing.imageUrl && existing.imageUrl !== input.imageUrl) {
+    await deletePrototypeImage(existing.imageUrl);
+  }
+
   revalidatePath(`/projects/${projectId}/prototypes`);
 }
 
 export async function deletePrototype(prototypeId: string, projectId: string) {
   const userId = await requireAuth();
   await assertProjectAccess(projectId, userId, "editor");
-  await assertPrototypeInProject(prototypeId, projectId);
+  const existing = await assertPrototypeInProject(prototypeId, projectId);
 
   await db
     .delete(prototypeLogs)
     .where(eq(prototypeLogs.id, prototypeId));
+
+  // 紐づく写真もR2から掃除する
+  await deletePrototypeImage(existing.imageUrl);
 
   revalidatePath(`/projects/${projectId}/prototypes`);
 }

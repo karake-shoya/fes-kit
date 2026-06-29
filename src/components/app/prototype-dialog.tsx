@@ -14,9 +14,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createPrototype, updatePrototype, deletePrototype } from "@/actions/prototype";
+import { createPrototypeUploadUrl } from "@/actions/upload";
+import { resizeImage } from "@/lib/image";
 import { DeleteConfirmInline } from "@/components/app/delete-confirm-inline";
 import { SelectModal } from "@/components/app/select-modal";
 import { RESULT_OPTIONS } from "@/lib/prototype";
+import { ImagePlus, X } from "lucide-react";
 import type { PrototypeWithRecipe } from "@/db/queries/prototypes";
 
 type Props = {
@@ -34,8 +37,12 @@ export function PrototypeDialog({ projectId, recipes, prototype, children }: Pro
   const [error, setError]                 = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [recipeId, setRecipeId]           = useState(prototype?.recipeId ?? "");
+  // 写真は選択時にR2へ直接アップロードし、確定後のURLを保持する
+  const [imageUrl, setImageUrl]           = useState<string | null>(prototype?.imageUrl ?? null);
+  const [uploading, setUploading]         = useState(false);
   const [isPending, startTransition]      = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const router  = useRouter();
 
   // レシピ選択モーダル用の選択肢
@@ -46,8 +53,34 @@ export function PrototypeDialog({ projectId, recipes, prototype, children }: Pro
     if (!next) {
       setConfirmDelete(false);
       setError(null);
-      // 閉じたら未保存の選択を破棄（編集モードは元のレシピ、追加モードは未選択へ）
+      // 閉じたら未保存の選択を破棄（編集モードは元の値、追加モードは初期値へ）
       setRecipeId(prototype?.recipeId ?? "");
+      setImageUrl(prototype?.imageUrl ?? null);
+    }
+  }
+
+  // 写真選択 → 縮小 → 署名付きURL取得 → R2へ直接PUT
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    try {
+      const blob = await resizeImage(file);
+      const { uploadUrl, publicUrl } = await createPrototypeUploadUrl(projectId);
+      const res = await fetch(uploadUrl, {
+        method: "PUT",
+        body: blob,
+        headers: { "Content-Type": "image/jpeg" },
+      });
+      if (!res.ok) throw new Error("写真のアップロードに失敗しました");
+      setImageUrl(publicUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "写真のアップロードに失敗しました");
+    } finally {
+      setUploading(false);
+      // 同じファイルを再選択できるようリセット
+      if (fileRef.current) fileRef.current.value = "";
     }
   }
 
@@ -68,6 +101,7 @@ export function PrototypeDialog({ projectId, recipes, prototype, children }: Pro
           await createPrototype(projectId, formData);
           formRef.current?.reset();
           setRecipeId("");
+          setImageUrl(null);
         }
         setOpen(false);
         router.refresh();
@@ -152,24 +186,56 @@ export function PrototypeDialog({ projectId, recipes, prototype, children }: Pro
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="imageUrl">写真URL</Label>
-            <Input
-              id="imageUrl"
-              name="imageUrl"
-              type="url"
-              placeholder="https://example.com/photo.jpg"
-              defaultValue={prototype?.imageUrl ?? ""}
+            <Label>写真</Label>
+            {/* 保存対象のURL（R2へのアップロード成功時にセット） */}
+            <input type="hidden" name="imageUrl" value={imageUrl ?? ""} />
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
             />
+
+            {imageUrl ? (
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imageUrl}
+                  alt="試作写真のプレビュー"
+                  className="w-full rounded-xl object-cover max-h-56"
+                />
+                <button
+                  type="button"
+                  onClick={() => setImageUrl(null)}
+                  disabled={uploading || isPending}
+                  aria-label="写真を削除"
+                  className="absolute top-2 right-2 rounded-full bg-black/55 p-1.5 text-white hover:bg-black/70"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading || isPending}
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 py-8 text-zinc-500 hover:bg-zinc-100 disabled:opacity-60"
+              >
+                <ImagePlus className="w-6 h-6" />
+                <span className="text-sm">{uploading ? "アップロード中…" : "写真を選ぶ"}</span>
+              </button>
+            )}
           </div>
 
           {error && <p className="text-sm text-red-500">{error}</p>}
 
           <Button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || uploading}
             className="bg-amber-700 hover:bg-amber-800 text-white"
           >
-            {isPending ? "保存中…" : isEdit ? "変更を保存" : "追加する"}
+            {isPending ? "保存中…" : uploading ? "写真を処理中…" : isEdit ? "変更を保存" : "追加する"}
           </Button>
 
           {isEdit && !confirmDelete && (
