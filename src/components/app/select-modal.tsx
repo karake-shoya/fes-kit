@@ -48,19 +48,19 @@ export function SelectModal({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="h-auto min-h-9 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-left text-sm flex items-center justify-between gap-2 focus:outline-none focus:ring-2 focus:ring-amber-300"
+        className="h-auto min-h-9 w-full rounded-md border border-border bg-card px-3 py-2 text-left text-sm flex items-center justify-between gap-2 focus:outline-none focus:ring-2 focus:ring-ring"
       >
         {triggerPrimary ? (
           <span className="flex flex-col min-w-0">
-            <span className="text-zinc-800 truncate">{triggerPrimary}</span>
+            <span className="text-foreground truncate">{triggerPrimary}</span>
             {triggerSecondary && (
-              <span className="text-xs text-zinc-500 truncate">{triggerSecondary}</span>
+              <span className="text-xs text-muted-foreground truncate">{triggerSecondary}</span>
             )}
           </span>
         ) : (
-          <span className="text-zinc-400">{placeholder}</span>
+          <span className="text-muted-foreground/70">{placeholder}</span>
         )}
-        <ChevronRight className="w-4 h-4 shrink-0 text-zinc-400" />
+        <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground/70" />
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -69,7 +69,7 @@ export function SelectModal({
             <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
           </DialogHeader>
           {options.length === 0 ? (
-            <p className="text-sm text-zinc-400 text-center py-6">{emptyText}</p>
+            <p className="text-sm text-muted-foreground/70 text-center py-6">{emptyText}</p>
           ) : (
             <ul className="flex flex-col gap-2 mt-2 max-h-[60vh] overflow-y-auto">
               {options.map((o) => {
@@ -84,13 +84,13 @@ export function SelectModal({
                       }}
                       className={`w-full text-left rounded-xl border px-3 py-3 flex flex-col active:scale-[0.99] transition-transform ${
                         isSelected
-                          ? "border-amber-300 bg-amber-50"
-                          : "border-zinc-200 bg-white"
+                          ? "border-primary/30 bg-primary/10"
+                          : "border-border bg-card"
                       }`}
                     >
-                      <span className="text-sm font-medium text-zinc-800 truncate">{o.primary}</span>
+                      <span className="text-sm font-medium text-foreground truncate">{o.primary}</span>
                       {o.secondary && (
-                        <span className="text-xs text-zinc-500 truncate">{o.secondary}</span>
+                        <span className="text-xs text-muted-foreground truncate">{o.secondary}</span>
                       )}
                     </button>
                   </li>

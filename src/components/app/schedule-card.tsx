@@ -106,8 +106,8 @@ export function ScheduleCard({ schedule: s, projectId, canEdit }: Props) {
   // タイトル＋日付の本文（編集トリガーになる部分）
   const body = (
     <div className="flex flex-col min-w-0">
-      <span className="text-sm font-medium text-zinc-800 truncate">{s.title}</span>
-      <span className="text-xs text-zinc-400">
+      <span className="text-sm font-medium text-foreground truncate">{s.title}</span>
+      <span className="text-xs text-muted-foreground/70">
         {formatDateRange(s.startDate, s.endDate)}
         {s.memo && <> ・ {s.memo}</>}
       </span>
@@ -115,7 +115,7 @@ export function ScheduleCard({ schedule: s, projectId, canEdit }: Props) {
   );
 
   const cardInner = (
-    <div className="flex flex-1 min-w-0 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+    <div className="flex flex-1 min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <div className={`w-1.5 shrink-0 ${bar}`} />
       <div className="flex items-center justify-between gap-2 px-3 py-3 flex-1 min-w-0">
         {canEdit ? (

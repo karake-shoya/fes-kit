@@ -110,14 +110,37 @@ export function RecipeProfitPanel({
 
   return (
     <>
+      {/* ヘッダー直下に常時表示する細い利益率バー。
+          スクロールで材料を編集していても利益率・利益が画面から消えない。
+          AppHeader（sticky top-0・約52px）の直下に貼り付く。 */}
+      {hasCost && (
+        <div className="sticky top-[52px] z-10 -mt-2 flex items-center justify-between gap-3 rounded-full border border-border bg-card/95 px-4 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+          <div className={`flex items-baseline gap-1.5 ${style.text}`}>
+            <span className="text-lg font-bold leading-none tabular-nums">
+              {Math.round(cost.profitRate)}%
+            </span>
+            <span className="flex items-center gap-0.5 text-xs">
+              {style.Icon && <style.Icon className="w-3.5 h-3.5" />}
+              {style.label}
+            </span>
+          </div>
+          <div className="flex items-baseline gap-1 text-xs text-muted-foreground">
+            利益
+            <span className={`text-sm font-semibold tabular-nums ${style.text}`}>
+              {formatYen(cost.profit)}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* 利益サマリー（ドラッグに追従して即時更新） */}
-      <section className="bg-white rounded-2xl border border-zinc-200 px-4 py-5 flex flex-col gap-4 shadow-sm">
+      <section className="bg-card rounded-2xl border border-border px-4 py-4 flex flex-col gap-3 shadow-sm">
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm text-zinc-500">販売価格（1個）</span>
+            <span className="text-sm text-muted-foreground">販売価格（1個）</span>
             {canEdit ? (
               <div className="flex items-baseline gap-1">
-                <span className="font-semibold text-zinc-800">¥</span>
+                <span className="font-semibold text-foreground">¥</span>
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -133,11 +156,11 @@ export function RecipeProfitPanel({
                   onKeyDown={(e) => {
                     if (e.key === "Enter") e.currentTarget.blur();
                   }}
-                  className="w-24 h-9 font-semibold text-zinc-800 text-right"
+                  className="w-24 h-9 font-semibold text-foreground text-right"
                 />
               </div>
             ) : (
-              <span className="font-semibold text-zinc-800">{formatYen(sellingPrice)}</span>
+              <span className="font-semibold text-foreground">{formatYen(sellingPrice)}</span>
             )}
           </div>
           {canEdit && (
@@ -154,20 +177,20 @@ export function RecipeProfitPanel({
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-sm text-zinc-500">原価（1個）</span>
-          <span className="font-semibold text-zinc-800">
+          <span className="text-sm text-muted-foreground">原価（1個）</span>
+          <span className="font-semibold text-foreground">
             {hasCost ? formatYen(cost.totalCost) : "—"}
           </span>
         </div>
 
-        <div className="border-t border-zinc-100 pt-4 flex items-center justify-between">
-          <span className="text-sm text-zinc-500">利益（1個）</span>
+        <div className="border-t border-border pt-3 flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">利益（1個）</span>
           <span className={`font-bold text-xl ${style.text}`}>
             {hasCost ? formatYen(cost.profit) : "—"}
           </span>
         </div>
 
-        <div className="flex flex-col gap-2 bg-zinc-50 rounded-xl py-3 px-3">
+        <div className="flex flex-col gap-2 bg-background rounded-xl py-3 px-3">
           {hasCost ? (
             <>
               <div className="flex items-center justify-center gap-2">
@@ -180,7 +203,7 @@ export function RecipeProfitPanel({
                 </span>
               </div>
               {/* 利益率の視覚バー */}
-              <div className="h-2 rounded-full bg-zinc-200 overflow-hidden">
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${
                     cost.profitRate >= 0 ? "bg-green-500" : "bg-red-500"
@@ -190,14 +213,14 @@ export function RecipeProfitPanel({
               </div>
             </>
           ) : (
-            <span className="text-sm text-zinc-400 text-center">
+            <span className="text-sm text-muted-foreground/70 text-center">
               材料を追加すると利益率がわかります
             </span>
           )}
         </div>
 
         {recipe.servings > 1 && hasCost && (
-          <p className="text-xs text-zinc-400 text-center">
+          <p className="text-xs text-muted-foreground/70 text-center">
             {recipe.servings}個作ると利益は約 {formatYen(cost.profit * recipe.servings)}
           </p>
         )}
@@ -205,7 +228,7 @@ export function RecipeProfitPanel({
 
       {/* 材料 */}
       <section className="flex flex-col gap-3">
-        <h2 className="font-semibold text-zinc-700 px-1">材料（1個分）</h2>
+        <h2 className="font-semibold text-foreground px-1">材料（1個分）</h2>
         {canEdit ? (
           <RecipeIngredientEditor
             recipeId={recipe.id}
@@ -217,19 +240,19 @@ export function RecipeProfitPanel({
             onRemoveLine={removeLine}
           />
         ) : lines.length === 0 ? (
-          <p className="text-sm text-zinc-400 text-center py-4">材料が登録されていません</p>
+          <p className="text-sm text-muted-foreground/70 text-center py-4">材料が登録されていません</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {cost.lines.map((line) => (
               <li
                 key={line.ingredientId}
-                className="bg-white rounded-xl border border-zinc-200 px-3 py-3 flex items-center justify-between gap-2"
+                className="bg-card rounded-xl border border-border px-3 py-3 flex items-center justify-between gap-2"
               >
                 <div className="flex flex-col min-w-0">
-                  <span className="text-sm font-medium text-zinc-800 truncate">{line.ingredientName}</span>
-                  <span className="text-xs text-zinc-500">{line.quantityUsed}{line.unit}</span>
+                  <span className="text-sm font-medium text-foreground truncate">{line.ingredientName}</span>
+                  <span className="text-xs text-muted-foreground">{line.quantityUsed}{line.unit}</span>
                 </div>
-                <span className="text-sm text-zinc-600 shrink-0">{formatYen(line.lineCost)}</span>
+                <span className="text-sm text-muted-foreground shrink-0">{formatYen(line.lineCost)}</span>
               </li>
             ))}
           </ul>

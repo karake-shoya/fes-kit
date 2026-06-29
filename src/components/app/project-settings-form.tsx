@@ -75,7 +75,6 @@ export function ProjectSettingsForm({ project, canEdit }: Props) {
         <Button
           type="submit"
           disabled={isPending}
-          className="bg-amber-700 hover:bg-amber-800 text-white"
         >
           {isPending ? "保存中…" : "変更を保存"}
         </Button>

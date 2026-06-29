@@ -35,7 +35,7 @@ export function ConfirmDeleteDialog({
         <DialogHeader>
           <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-zinc-600 leading-relaxed">{message}</p>
+        <p className="text-sm text-muted-foreground leading-relaxed">{message}</p>
         <div className="flex gap-2">
           <Button
             type="button"

@@ -191,13 +191,13 @@ export function RecipeIngredientEditor({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2.5">
       {lines.length === 0 ? (
-        <p className="text-sm text-zinc-400 text-center py-4">
+        <p className="text-sm text-muted-foreground/70 text-center py-4">
           材料を追加すると原価がわかります
         </p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-2">
           {lines.map((line) => {
             const lineCost = unitCostOf(line.pricePerUnit, line.quantityPerUnit) * line.quantityUsed;
             const mode = modes[line.ingredientId] ?? "qty";
@@ -225,13 +225,13 @@ export function RecipeIngredientEditor({
             return (
               <li
                 key={line.ingredientId}
-                className="bg-white rounded-2xl border border-zinc-200 px-3 py-3 flex flex-col gap-3 shadow-sm"
+                className="bg-card rounded-xl border border-border px-3 py-2.5 flex flex-col gap-2 shadow-sm"
               >
                 {/* ヘッダ：材料名＋登録時の単価/数量・編集/外すボタン */}
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-medium text-zinc-800 truncate">{line.ingredientName}</span>
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-sm font-medium text-foreground truncate">{line.ingredientName}</span>
+                    <span className="text-[11px] leading-tight text-muted-foreground truncate">
                       {formatQty(line.quantityPerUnit)}{line.unit}で{formatYen(line.pricePerUnit)}
                     </span>
                   </div>
@@ -243,7 +243,7 @@ export function RecipeIngredientEditor({
                       >
                         <button
                           type="button"
-                          className="text-zinc-300 hover:text-amber-700 p-1"
+                          className="text-muted-foreground/40 hover:text-primary p-1"
                           aria-label="材料の登録情報を編集"
                         >
                           <Pencil className="w-4 h-4" />
@@ -253,7 +253,7 @@ export function RecipeIngredientEditor({
                     <button
                       type="button"
                       onClick={() => setConfirmRemoveId(line.ingredientId)}
-                      className="text-zinc-300 hover:text-red-500 p-1"
+                      className="text-muted-foreground/40 hover:text-red-500 p-1"
                       aria-label="この材料を外す"
                     >
                       <X className="w-4 h-4" />
@@ -268,7 +268,7 @@ export function RecipeIngredientEditor({
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 px-2 text-xs text-zinc-500"
+                        className="h-7 px-2 text-xs text-muted-foreground"
                         onClick={() => setConfirmRemoveId(null)}
                       >
                         やめる
@@ -284,27 +284,32 @@ export function RecipeIngredientEditor({
                   </div>
                 )}
 
-                {/* モード切替トグル */}
-                <div className="flex rounded-lg bg-zinc-100 p-0.5 text-xs">
-                  {(["qty", "cost"] as Mode[]).map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setModes((prev) => ({ ...prev, [line.ingredientId]: m }))}
-                      className={`flex-1 rounded-md py-1.5 font-medium transition-colors ${
-                        mode === m ? "bg-white text-amber-800 shadow-sm" : "text-zinc-500"
-                      }`}
-                    >
-                      {m === "qty" ? "量で調整" : "材料費で調整"}
-                    </button>
-                  ))}
+                {/* モード切替トグル＋自動計算プレビュー（同じ行に集約） */}
+                <div className="flex items-center gap-2">
+                  <div className="flex flex-1 rounded-lg bg-muted p-0.5 text-xs">
+                    {(["qty", "cost"] as Mode[]).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setModes((prev) => ({ ...prev, [line.ingredientId]: m }))}
+                        className={`flex-1 rounded-md py-1 font-medium transition-colors ${
+                          mode === m ? "bg-card text-primary shadow-sm" : "text-muted-foreground"
+                        }`}
+                      >
+                        {m === "qty" ? "量で調整" : "材料費で調整"}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="shrink-0 text-[11px] text-muted-foreground/70 tabular-nums">
+                    {derivedText}
+                  </span>
                 </div>
 
-                {/* 現在値（直接入力可）＋ 従属表示 */}
-                <div className="flex items-end justify-between gap-2">
-                  <div className="flex items-baseline gap-1">
+                {/* 数値入力＋ステッパー＋スライダーを1行に集約 */}
+                <div className="flex items-center gap-1.5">
+                  <div className="flex items-baseline gap-0.5 shrink-0">
                     {mode === "cost" && (
-                      <span className="text-lg font-semibold text-zinc-800">¥</span>
+                      <span className="text-base font-semibold text-foreground">¥</span>
                     )}
                     <Input
                       type="number"
@@ -323,21 +328,16 @@ export function RecipeIngredientEditor({
                       onKeyDown={(e) => {
                         if (e.key === "Enter") e.currentTarget.blur();
                       }}
-                      className="w-24 h-9 text-lg font-semibold text-zinc-800"
+                      className="w-14 h-9 px-1.5 text-base font-semibold text-foreground text-center"
                     />
                     {mode === "qty" && (
-                      <span className="text-sm text-zinc-500">{line.unit}</span>
+                      <span className="text-xs text-muted-foreground">{line.unit}</span>
                     )}
                   </div>
-                  <span className="text-xs text-zinc-400">{derivedText}</span>
-                </div>
-
-                {/* スライダー＋ステッパー */}
-                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => stepChange(line, mode, lineCost, -1)}
-                    className="shrink-0 w-8 h-8 rounded-full border border-zinc-200 flex items-center justify-center text-zinc-500 active:scale-95"
+                    className="shrink-0 w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground active:scale-95"
                     aria-label="減らす"
                   >
                     <Minus className="w-4 h-4" />
@@ -353,7 +353,7 @@ export function RecipeIngredientEditor({
                   <button
                     type="button"
                     onClick={() => stepChange(line, mode, lineCost, 1)}
-                    className="shrink-0 w-8 h-8 rounded-full border border-zinc-200 flex items-center justify-center text-zinc-500 active:scale-95"
+                    className="shrink-0 w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground active:scale-95"
                     aria-label="増やす"
                   >
                     <Plus className="w-4 h-4" />
@@ -380,13 +380,13 @@ export function RecipeIngredientEditor({
 
         {/* 材料マスタに無い食材を、このページから直接登録できる */}
         <IngredientDialog projectId={projectId}>
-          <Button variant="ghost" className="text-amber-800 hover:bg-amber-50">
+          <Button variant="ghost" className="text-primary hover:bg-primary/10">
             <Plus className="w-4 h-4" /> 新しい材料を登録する
           </Button>
         </IngredientDialog>
 
         {available.length === 0 && allIngredients.length > 0 && (
-          <p className="text-xs text-zinc-400 text-center">
+          <p className="text-xs text-muted-foreground/70 text-center">
             登録済みの材料はすべて追加済みです
           </p>
         )}
