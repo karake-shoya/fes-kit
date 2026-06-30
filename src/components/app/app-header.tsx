@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 
@@ -31,6 +32,14 @@ export function AppHeader({ title, backHref, subtitle, action }: Props) {
             <ArrowLeft className="h-5 w-5" />
           </Link>
         )}
+        <Image
+          src="/mascot.png"
+          alt="FesKit マスコット"
+          width={32}
+          height={32}
+          priority
+          className="h-8 w-8 shrink-0 object-contain"
+        />
         <div className="flex min-w-0 flex-col">
           <h1 className="truncate font-bold text-foreground">{title}</h1>
           {subtitle && (
