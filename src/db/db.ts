@@ -7,8 +7,18 @@ const authToken = process.env.TURSO_AUTH_TOKEN!;
 
 // Embedded Replica 用のローカルレプリカパス。
 // 設定されている場合のみローカルレプリカ方式に切り替える。
-// Vercel では書き込み可能な /tmp 配下を指定すること（例: file:/tmp/feskit-replica.db）。
 const replicaPath = process.env.TURSO_REPLICA_PATH;
+
+// 埋め込みレプリカを実際に使うかどうか。
+// Vercel などのサーバーレスはリクエストごとに別インスタンス＝別ローカルレプリカに
+// なり得る。read_your_writes は「同じクライアント接続内」しか保証しないため、
+// 「プロジェクト/レシピを作成 → 別インスタンスで遷移先を表示」したときに、
+// まだ同期されていないレプリカを読んで存在チェックに失敗し notFound()（404）が頻発する。
+// 埋め込みレプリカは常駐サーバー向けの仕組みなので、サーバーレスでは無効化して
+// 常にプライマリ直結（=常に最新）で読む。環境変数の設定ミスでも安全側に倒すため、
+// TURSO_REPLICA_PATH が設定されていても Vercel 上では使わない。
+const isServerless = Boolean(process.env.VERCEL);
+const useReplica = Boolean(replicaPath) && !isServerless;
 
 // バックグラウンド同期の間隔（秒）。未設定なら 60 秒。
 const syncInterval = process.env.TURSO_SYNC_INTERVAL
@@ -19,9 +29,9 @@ function createDbClient(): Client {
   // Embedded Replica モード:
   //   読み取りはローカルレプリカから（高速）、書き込みはプライマリへ転送し pull で反映。
   //   read_your_writes はデフォルト有効なので、自分の書き込みは即座にローカルへ反映される。
-  if (replicaPath) {
+  if (useReplica) {
     return createClient({
-      url:          replicaPath,
+      url:          replicaPath!,
       syncUrl,
       authToken,
       syncInterval,
