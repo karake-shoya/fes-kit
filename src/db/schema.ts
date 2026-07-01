@@ -5,6 +5,7 @@ import {
   real,
   sqliteTable,
   primaryKey,
+  index,
 } from "drizzle-orm/sqlite-core";
 
 // ユーザー（Clerk WebhookでINSERT/UPDATE/DELETE）
@@ -35,7 +36,10 @@ export const projectMembers = sqliteTable("project_members", {
   userId:    text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   role:      text("role", { enum: ["owner", "editor", "viewer"] }).notNull().default("viewer"),
   invitedAt: text("invited_at").notNull().default(sql`(datetime('now'))`),
-}, (t) => ({ pk: primaryKey({ columns: [t.projectId, t.userId] }) }));
+}, (t) => ({
+  pk: primaryKey({ columns: [t.projectId, t.userId] }),
+  userIdIdx: index("idx_project_members_user_id").on(t.userId),
+}));
 
 // 招待リンク（URLトークン方式）
 export const projectInvitations = sqliteTable("project_invitations", {
@@ -61,7 +65,9 @@ export const ingredients = sqliteTable("ingredients", {
   memo:      text("memo"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
-});
+}, (t) => ({
+  projectIdIdx: index("idx_ingredients_project_id").on(t.projectId),
+}));
 
 // 商品テンプレート（例：焼きそば1皿）
 export const recipes = sqliteTable("recipes", {
@@ -73,7 +79,9 @@ export const recipes = sqliteTable("recipes", {
   memo:         text("memo"),
   createdAt:    text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt:    text("updated_at").notNull().default(sql`(datetime('now'))`),
-});
+}, (t) => ({
+  projectIdIdx: index("idx_recipes_project_id").on(t.projectId),
+}));
 
 // レシピ × 材料 × 分量（中間テーブル）
 // quantityUsed: ingredientsのunitに対する使用量（例：キャベツ30g → 30）
@@ -81,7 +89,11 @@ export const recipeIngredients = sqliteTable("recipe_ingredients", {
   recipeId:     text("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
   ingredientId: text("ingredient_id").notNull().references(() => ingredients.id, { onDelete: "cascade" }),
   quantityUsed: real("quantity_used").notNull(),
-}, (t) => ({ pk: primaryKey({ columns: [t.recipeId, t.ingredientId] }) }));
+}, (t) => ({
+  pk: primaryKey({ columns: [t.recipeId, t.ingredientId] }),
+  // recipeId は複合PKの先頭列のためSQLiteが自動生成する索引でカバー済み。ingredientId（2列目）のみ追加索引が必要
+  ingredientIdIdx: index("idx_recipe_ingredients_ingredient_id").on(t.ingredientId),
+}));
 
 // 試作品記録
 export const prototypeLogs = sqliteTable("prototype_logs", {
@@ -93,7 +105,9 @@ export const prototypeLogs = sqliteTable("prototype_logs", {
   memo:     text("memo"),                       // 手順・感想など自由記述
   imageUrl: text("image_url"),                  // 試作写真（Cloudflare R2）
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
-});
+}, (t) => ({
+  recipeIdIdx: index("idx_prototype_logs_recipe_id").on(t.recipeId),
+}));
 
 // スケジュール（開始日・終了日対応）
 // 1日タスクは startDate === endDate
@@ -108,7 +122,9 @@ export const schedules = sqliteTable("schedules", {
   memo:      text("memo"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
-});
+}, (t) => ({
+  projectIdIdx: index("idx_schedules_project_id").on(t.projectId),
+}));
 
 // 型エクスポート
 export type User              = typeof users.$inferSelect;

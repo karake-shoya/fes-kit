@@ -107,6 +107,7 @@ function PrototypeCard({
           <img
             src={prototype.imageUrl}
             alt={`${prototype.recipeName}の試作写真`}
+            loading="lazy"
             className="w-full rounded-xl object-cover max-h-48"
           />
         )}
