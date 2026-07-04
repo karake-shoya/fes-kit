@@ -2,15 +2,21 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { jaJP } from "@clerk/localizations";
 import { shadcn } from "@clerk/ui/themes";
 import type { Metadata, Viewport } from "next";
-import { Geist, Figtree } from "next/font/google";
+import { Figtree, Zen_Maru_Gothic } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-const figtree = Figtree({subsets:['latin'],variable:'--font-sans'});
+// 欧文・数字はFigtree、日本語は丸ゴシックのZen Maru Gothicで表示する。
+// 落ち着いた暖色パレットに合う、手作り感のある柔らかい字面にする
+const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree" });
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const zenMaru = Zen_Maru_Gothic({
+  weight: ["400", "500", "700"],
   subsets: ["latin"],
+  variable: "--font-zen-maru",
+  display: "swap",
+  // 日本語フォントはサイズが大きく unicode-range で分割配信されるため preload しない
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -37,7 +43,7 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
-      className={cn("h-full", "antialiased", geistSans.variable, "font-sans", figtree.variable)}
+      className={cn("h-full", "antialiased", "font-sans", figtree.variable, zenMaru.variable)}
     >
       <body className="min-h-full flex flex-col">
         <ClerkProvider localization={jaJP} appearance={{ theme: shadcn }}>

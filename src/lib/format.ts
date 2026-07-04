@@ -12,12 +12,28 @@ export function formatDate(value: string | null | undefined): string {
   return value.replace(/-/g, "/");
 }
 
+// 今日の日付を日本時間の "YYYY-MM-DD" で返す
+// （Vercel のサーバーは UTC で動くためタイムゾーンを明示する。sv-SE ロケールはISO形式）
+export function todayYmd(): string {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(new Date());
+}
+
+// ymd（YYYY-MM-DD）が today から何日後かを返す（当日=0、過去は負の値）
+export function daysUntil(ymd: string, today: string): number {
+  return Math.round((Date.parse(ymd) - Date.parse(today)) / 86_400_000);
+}
+
 // プロジェクトのロールラベル（owner / editor / viewer → 日本語）
 export const ROLE_LABEL = {
   owner:  "オーナー",
   editor: "編集者",
   viewer: "閲覧者",
 } as const;
+
+// ロール／情報を示す小さなピル（角丸バッジ）の共通スタイル。
+// ダッシュボード・設定・招待ページで見た目を揃えるために1箇所に集約する
+export const PILL_CLASS =
+  "text-xs text-primary bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5";
 
 // 利益率の表示スタイル（黒字＝緑 / 赤字＝赤 / 原価ゼロ＝グレー）
 // ペルソナ（数字が苦手）が一目で判断できるようアイコン・短いラベルを添える
