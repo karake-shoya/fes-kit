@@ -78,3 +78,18 @@ export async function getProjectMeta(projectId: string) {
 
   return project ?? null;
 }
+
+// AI 診断のコンテキスト用（プロジェクト名・説明・イベント日）の軽量クエリ
+export async function getProjectContext(projectId: string) {
+  const [project] = await db
+    .select({
+      name:        projects.name,
+      description: projects.description,
+      eventDate:   projects.eventDate,
+    })
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .limit(1);
+
+  return project ?? null;
+}

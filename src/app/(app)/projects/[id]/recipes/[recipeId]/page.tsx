@@ -55,6 +55,7 @@ export default async function RecipeDetailPage({
           initialLines={cost.lines}
           allIngredients={allIngredients}
           canEdit={canEdit}
+          aiEnabled={!!process.env.ANTHROPIC_API_KEY}
         />
 
         {recipe.memo && (
