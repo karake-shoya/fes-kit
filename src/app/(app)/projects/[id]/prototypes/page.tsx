@@ -29,7 +29,7 @@ export default async function PrototypesPage({
   const canEdit = myRole === "owner" || myRole === "editor";
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <AppHeader
         title="試作記録"
         backHref={`/projects/${id}`}
@@ -63,7 +63,7 @@ export default async function PrototypesPage({
           </ul>
         )}
       </main>
-    </div>
+    </>
   );
 }
 

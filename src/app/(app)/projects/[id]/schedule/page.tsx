@@ -30,7 +30,7 @@ export default async function SchedulePage({
   return (
     // 初期表示は常に今月（initialMonth を渡さない）
     <ScheduleMonthProvider>
-      <div className="min-h-screen bg-background">
+      <>
         <AppHeader
           title="スケジュール"
           backHref={`/projects/${id}`}
@@ -57,7 +57,7 @@ export default async function SchedulePage({
             schedules={list}
           />
         </main>
-      </div>
+      </>
     </ScheduleMonthProvider>
   );
 }

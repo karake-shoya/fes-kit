@@ -25,7 +25,7 @@ export default async function ProjectSettingsPage({
   const isOwner   = myRole === "owner";
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <AppHeader title="プロジェクト設定" backHref={`/projects/${id}`} />
 
       <main className="px-4 py-6 flex flex-col gap-6 max-w-lg mx-auto">
@@ -78,6 +78,6 @@ export default async function ProjectSettingsPage({
           </section>
         )}
       </main>
-    </div>
+    </>
   );
 }

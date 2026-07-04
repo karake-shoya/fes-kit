@@ -52,7 +52,7 @@ export default async function ProjectPage({
   ] as const;
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <AppHeader
         title={project.name}
         backHref="/dashboard"
@@ -151,7 +151,7 @@ export default async function ProjectPage({
           メンバー {project.members.length}人
         </div>
       </main>
-    </div>
+    </>
   );
 }
 

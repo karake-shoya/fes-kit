@@ -2,7 +2,7 @@
 // リモートDB（Turso）のクエリ完了を待たずに画面が反応するため、体感速度が上がる。
 export default function Loading() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <header className="bg-card border-b border-border px-4 py-4">
         <div className="h-5 w-32 rounded bg-muted animate-pulse" />
       </header>
