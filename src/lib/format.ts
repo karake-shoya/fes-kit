@@ -37,7 +37,14 @@ export const PILL_CLASS =
 
 // 利益率の表示スタイル（黒字＝緑 / 赤字＝赤 / 原価ゼロ＝グレー）
 // ペルソナ（数字が苦手）が一目で判断できるようアイコン・短いラベルを添える
-import { TrendingUp, TrendingDown, type LucideIcon } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Sparkles,
+  CircleCheck,
+  TriangleAlert,
+  type LucideIcon,
+} from "lucide-react";
 
 export function profitStyle(
   profitRate: number,
@@ -50,4 +57,30 @@ export function profitStyle(
     return { text: "text-green-600", Icon: TrendingUp, label: "黒字" };
   }
   return { text: "text-red-600", Icon: TrendingDown, label: "赤字（見直そう）" };
+}
+
+// 原価率の表示スタイル（低い＝良い）。飲食の目安をもとに落ち着いた4段階で判断を補助する。
+// ペルソナ（数字が苦手）向けに、数字の良し悪しを色と短いラベルで一目化する。
+// text はテキスト色、bar はバー塗り色（Tailwind bg-*）を返す。
+export type CostRateStyle = {
+  text:  string;
+  bar:   string;
+  Icon:  LucideIcon | null;
+  label: string;
+};
+
+export function costRateStyle(costRate: number, hasCost: boolean): CostRateStyle {
+  if (!hasCost) {
+    return { text: "text-muted-foreground/70", bar: "bg-muted-foreground/30", Icon: null, label: "材料未登録" };
+  }
+  if (costRate > 100) {
+    return { text: "text-red-600",     bar: "bg-red-500",     Icon: TriangleAlert, label: "赤字（見直そう）" };
+  }
+  if (costRate <= 35) {
+    return { text: "text-green-600",   bar: "bg-green-500",   Icon: Sparkles,      label: "理想的" };
+  }
+  if (costRate <= 60) {
+    return { text: "text-amber-600",   bar: "bg-amber-500",   Icon: CircleCheck,   label: "ふつう" };
+  }
+  return { text: "text-orange-600",    bar: "bg-orange-500",  Icon: TrendingDown,  label: "原価が高め" };
 }

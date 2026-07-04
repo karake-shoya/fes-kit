@@ -16,6 +16,7 @@ export type RecipeCost = {
   totalCost:  number;   // 1個あたり原価
   profit:     number;   // 1個あたり利益
   profitRate: number;   // 利益率（%）
+  costRate:   number;   // 原価率（%）＝ 原価 ÷ 販売価格
   lines: (RecipeCostRow & { lineCost: number })[]; // 材料ごとの原価
 };
 
@@ -25,6 +26,12 @@ export const round1 = (n: number) => Math.round(n * 10) / 10;
 export const round2 = (n: number) => Math.round(n * 100) / 100;
 // step の倍数に切り上げる（スライダー上限の算出に使う）
 export const roundUpTo = (n: number, step: number) => Math.ceil(n / step) * step;
+
+// 目標原価率（%）から推奨販売価格を逆算する（AI不要・確実な下敷き）
+// 推奨価格 = 原価 ÷ (目標原価率 / 100)。原価0や目標0以下のときは0を返す（防御）。
+export function priceForTargetCostRate(totalCost: number, targetRate: number): number {
+  return totalCost > 0 && targetRate > 0 ? totalCost / (targetRate / 100) : 0;
+}
 
 // 材料1単位あたりの原価（購入単価 ÷ 購入数量）
 // quantityPerUnit が 0 のときはゼロ除算を避け 0 を返す（防御）
@@ -55,6 +62,7 @@ export function calcRecipeCost(sellingPrice: number, rows: RecipeCostRow[]): Rec
   const totalCost  = lines.reduce((sum, l) => sum + l.lineCost, 0);
   const profit     = sellingPrice - totalCost;
   const profitRate = sellingPrice > 0 ? (profit / sellingPrice) * 100 : 0;
+  const costRate   = sellingPrice > 0 ? (totalCost / sellingPrice) * 100 : 0;
 
-  return { totalCost, profit, profitRate, lines };
+  return { totalCost, profit, profitRate, costRate, lines };
 }

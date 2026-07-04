@@ -60,14 +60,18 @@ export function ProjectSettingsForm({ project, canEdit }: Props) {
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="description">メモ</Label>
+        <Label htmlFor="description">説明・メモ</Label>
         <Textarea
           id="description"
           name="description"
           defaultValue={project.description ?? ""}
+          placeholder="例：地域の秋祭り。家族連れが多め。定番のたこ焼き店。"
           rows={3}
           disabled={!canEdit}
         />
+        <p className="text-xs text-muted-foreground">
+          イベントの雰囲気や客層を書いておくと、AIの価格提案に反映されます。
+        </p>
       </div>
       {error   && <p className="text-sm text-red-500">{error}</p>}
       {success && <p className="text-sm text-green-600">保存しました</p>}
