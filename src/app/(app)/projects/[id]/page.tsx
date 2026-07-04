@@ -5,6 +5,7 @@ import {
   CalendarDays,
   ChevronRight,
   ShoppingCart,
+  ShoppingBasket,
   ClipboardList,
   CookingPot,
   PartyPopper,
@@ -16,6 +17,7 @@ import { getProject } from "@/db/queries/projects";
 import { assertProjectAccess } from "@/db/queries/auth";
 import { getProjectStats, getUpcomingSchedules } from "@/db/queries/stats";
 import { getRecipes } from "@/db/queries/recipes";
+import { getShoppingListItemCount } from "@/db/queries/shopping-list";
 import { AppHeader } from "@/components/app/app-header";
 import { MemberAvatar, AVATAR_FALLBACK_CLASS } from "@/components/app/member-avatar";
 import { formatDate, todayYmd, daysUntil } from "@/lib/format";
@@ -30,11 +32,12 @@ export default async function ProjectPage({
   const userId  = await requireAuth();
   const today   = todayYmd();
 
-  const [project, stats, upcoming, recipeList] = await Promise.all([
+  const [project, stats, upcoming, recipeList, shoppingListCount] = await Promise.all([
     getProject(id),
     getProjectStats(id),
     getUpcomingSchedules(id, today),
     getRecipes(id),
+    getShoppingListItemCount(id),
     assertProjectAccess(id, userId).catch(() => notFound()),
   ]);
 
@@ -46,10 +49,11 @@ export default async function ProjectPage({
   ).length;
 
   const navItems = [
-    { href: "ingredients", label: "材料マスタ",   Icon: ShoppingCart,  desc: "食材の単価・購入量を管理", badge: `${stats.ingredients}件` },
-    { href: "recipes",     label: "レシピ",       Icon: ClipboardList, desc: "商品と原価・利益率を計算", badge: `${recipeList.length}品` },
-    { href: "schedule",    label: "スケジュール", Icon: CalendarDays,  desc: "準備〜当日の作業を管理",   badge: stats.tasksTotal > 0 ? `${stats.tasksDone}/${stats.tasksTotal}` : "0件" },
-    { href: "prototypes",  label: "試作記録",     Icon: CookingPot,    desc: "試作の感想・写真を残す",   badge: `${stats.prototypes}回` },
+    { href: "ingredients",   label: "材料マスタ",     Icon: ShoppingCart,   desc: "食材の単価・購入量を管理",     badge: `${stats.ingredients}件` },
+    { href: "recipes",       label: "レシピ",         Icon: ClipboardList,  desc: "商品と原価・利益率を計算",     badge: `${recipeList.length}品` },
+    { href: "shopping-list", label: "買い出しリスト", Icon: ShoppingBasket, desc: "レシピから必要な買い出し量を計算", badge: `${shoppingListCount}点` },
+    { href: "schedule",      label: "スケジュール",   Icon: CalendarDays,   desc: "準備〜当日の作業を管理",       badge: stats.tasksTotal > 0 ? `${stats.tasksDone}/${stats.tasksTotal}` : "0件" },
+    { href: "prototypes",    label: "試作記録",       Icon: CookingPot,     desc: "試作の感想・写真を残す",       badge: `${stats.prototypes}回` },
   ] as const;
 
   return (

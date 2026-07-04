@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import type { ChangeEvent, FocusEvent, KeyboardEvent } from "react";
 import { Sparkles, Ghost, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { RecipeIngredientEditor } from "@/components/app/recipe-ingredient-editor";
-import { setRecipeSellingPrice } from "@/actions/recipe";
+import { setRecipeSellingPrice, setRecipeServings } from "@/actions/recipe";
 import { suggestSellingPrice, type PriceSuggestion } from "@/actions/ai-price";
 import { useKeyedDebounce } from "@/lib/use-keyed-debounce";
 import { calcRecipeCost, roundUpTo, priceForTargetCostRate, type RecipeCostRow } from "@/lib/recipe-cost";
@@ -33,6 +34,43 @@ type Props = {
   aiEnabled: boolean;              // AI_GATEWAY_API_KEY 設定時のみ true
 };
 
+// 数値インライン編集の共通ロジック（フォーカスで編集バッファ化→blurで確定）。
+// 販売価格・作る予定数など「その場で編集→即保存」という同じパターンを持つ
+// 数値フィールドで共用し、境界値チェック・丸め処理だけを呼び出し側で指定する。
+function useDraftNumberInput(
+  value: number,
+  onCommit: (next: number) => void,
+  { isValid, integer = false }: { isValid: (raw: number) => boolean; integer?: boolean }
+) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const inputValue = draft ?? String(Math.round(value));
+
+  function onFocus(e: FocusEvent<HTMLInputElement>) {
+    setDraft(inputValue);
+    e.currentTarget.select();
+  }
+
+  function onChange(e: ChangeEvent<HTMLInputElement>) {
+    setDraft(e.target.value);
+  }
+
+  // 不正値は無視して元の値を維持
+  function onBlur() {
+    if (draft === null) return;
+    const cleaned = draft.trim().replace(/,/g, "");
+    const raw = Number(cleaned);
+    setDraft(null);
+    if (cleaned === "" || Number.isNaN(raw) || !isValid(raw)) return;
+    onCommit(integer ? Math.floor(raw) : raw);
+  }
+
+  function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") e.currentTarget.blur();
+  }
+
+  return { inputValue, onFocus, onChange, onBlur, onKeyDown };
+}
+
 // レシピ詳細の「利益サマリー＋材料エディタ」を束ねるクライアントパネル。
 // スライダー操作中はサーバーを待たずクライアント側で利益率を即時再計算し、
 // ドラッグ確定時にだけ保存する（手数ゼロ・追従表示）。
@@ -45,13 +83,27 @@ export function RecipeProfitPanel({
   aiEnabled,
 }: Props) {
   const [sellingPrice, setSellingPrice] = useState(recipe.sellingPrice);
+  // 作る予定数（買い出しリストの必要量計算に使う）。設定ダイアログを開かず
+  // ここで直接編集できるようにし、販売価格と同じ即時保存パターンに揃える。
+  const [servings, setServings] = useState(recipe.servings);
+  // 設定ダイアログ側での更新（router.refresh()でpropsが差し替わる）にも追従させる。
+  // useStateの初期値はマウント時にしか使われないため、レンダー中にpropsの変化を検知して
+  // 反映する（useEffect経由だとcascading renderになるためReact推奨のこの形にする）。
+  const [prevSellingPriceProp, setPrevSellingPriceProp] = useState(recipe.sellingPrice);
+  if (recipe.sellingPrice !== prevSellingPriceProp) {
+    setPrevSellingPriceProp(recipe.sellingPrice);
+    setSellingPrice(recipe.sellingPrice);
+  }
+  const [prevServingsProp, setPrevServingsProp] = useState(recipe.servings);
+  if (recipe.servings !== prevServingsProp) {
+    setPrevServingsProp(recipe.servings);
+    setServings(recipe.servings);
+  }
   // レシピ固有の情報（材料IDと使用量）だけを持つ。単価・数量などの材料マスタ情報は
   // allIngredients から都度結合するので、材料を編集→refreshすると原価へ反映される。
   const [items, setItems] = useState<{ ingredientId: string; quantityUsed: number }[]>(
     () => initialLines.map((l) => ({ ingredientId: l.ingredientId, quantityUsed: l.quantityUsed }))
   );
-  // 販売価格の数値入力バッファ（編集中のみ）
-  const [priceDraft, setPriceDraft] = useState<string | null>(null);
   const [scheduleSave] = useKeyedDebounce(500);
 
   // AI おすすめ価格の状態
@@ -114,6 +166,27 @@ export function RecipeProfitPanel({
     if (persist) savePrice(v);
   }
 
+  function saveServings(v: number) {
+    scheduleSave("servings", () => {
+      setRecipeServings(recipe.id, projectId, v).catch(() => {
+        /* 失敗時もローカル表示は維持。次回遷移で整合 */
+      });
+    });
+  }
+
+  function handleServingsChange(v: number, persist: boolean) {
+    setServings(v);
+    if (persist) saveServings(v);
+  }
+
+  const priceField = useDraftNumberInput(sellingPrice, (v) => handlePriceChange(v, true), {
+    isValid: (raw) => raw > 0,
+  });
+  const servingsField = useDraftNumberInput(servings, (v) => handleServingsChange(v, true), {
+    isValid: (raw) => raw >= 1,
+    integer: true,
+  });
+
   // Claude におすすめ価格を相談する
   function askAi() {
     setAiError(null);
@@ -126,19 +199,6 @@ export function RecipeProfitPanel({
       }
     });
   }
-
-  // 販売価格の数値入力を確定（不正値は無視して元の値を維持）
-  function commitPriceDraft() {
-    if (priceDraft === null) return;
-    const cleaned = priceDraft.trim().replace(/,/g, "");
-    const raw = Number(cleaned);
-    setPriceDraft(null);
-    if (cleaned === "" || Number.isNaN(raw) || raw <= 0) return;
-    setSellingPrice(raw);
-    savePrice(raw);
-  }
-
-  const priceInputValue = priceDraft ?? String(Math.round(sellingPrice));
 
   // 材料行の即時更新（子エディタから呼ばれる）
   function updateQuantity(ingredientId: string, quantityUsed: number) {
@@ -194,18 +254,13 @@ export function RecipeProfitPanel({
                 <Input
                   type="number"
                   inputMode="numeric"
-                  value={priceInputValue}
+                  value={priceField.inputValue}
                   min="1"
                   step={PRICE_STEP}
-                  onFocus={(e) => {
-                    setPriceDraft(priceInputValue);
-                    e.currentTarget.select();
-                  }}
-                  onChange={(e) => setPriceDraft(e.target.value)}
-                  onBlur={commitPriceDraft}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") e.currentTarget.blur();
-                  }}
+                  onFocus={priceField.onFocus}
+                  onChange={priceField.onChange}
+                  onBlur={priceField.onBlur}
+                  onKeyDown={priceField.onKeyDown}
                   className="w-24 h-9 font-semibold text-foreground text-right"
                 />
               </div>
@@ -303,11 +358,39 @@ export function RecipeProfitPanel({
           </div>
         )}
 
-        {recipe.servings > 1 && hasCost && (
-          <p className="text-xs text-muted-foreground/70 text-center">
-            {recipe.servings}個作ると利益は約 {formatYen(cost.profit * recipe.servings)}
-          </p>
-        )}
+        <div className="border-t border-border pt-3 flex flex-col gap-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm text-muted-foreground">作る予定数</span>
+            {canEdit ? (
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={servingsField.inputValue}
+                  min="1"
+                  step="1"
+                  onFocus={servingsField.onFocus}
+                  onChange={servingsField.onChange}
+                  onBlur={servingsField.onBlur}
+                  onKeyDown={servingsField.onKeyDown}
+                  className="w-20 h-9 font-semibold text-foreground text-right"
+                />
+                <span className="text-sm text-muted-foreground">個</span>
+              </div>
+            ) : (
+              <span className="font-semibold text-foreground">{servings}個</span>
+            )}
+          </div>
+          {!hasCost ? (
+            <p className="text-xs text-muted-foreground/70 text-center">
+              買い出しリストの必要量計算に使われます
+            </p>
+          ) : servings > 1 ? (
+            <p className="text-xs text-muted-foreground/70 text-center">
+              {servings}個作ると利益は約 {formatYen(cost.profit * servings)}
+            </p>
+          ) : null}
+        </div>
 
         {/* AIに価格を相談（AI_GATEWAY_API_KEY 設定時・編集者・材料ありのときのみ） */}
         {canEdit && aiEnabled && hasCost && (
