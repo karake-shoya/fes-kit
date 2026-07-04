@@ -12,7 +12,7 @@ export default async function ProjectLayout({
   const { id } = await params;
 
   return (
-    <div className="pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
+    <div className="pb-[calc(3.5rem+env(safe-area-inset-bottom)+0.375rem)]">
       {children}
       <ProjectTabBar projectId={id} />
     </div>

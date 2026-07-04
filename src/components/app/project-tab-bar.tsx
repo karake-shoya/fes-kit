@@ -39,7 +39,7 @@ export function ProjectTabBar({ projectId }: { projectId: string }) {
   return (
     <nav
       aria-label="プロジェクト内ナビゲーション"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85 pb-[env(safe-area-inset-bottom)]"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85 pb-[calc(env(safe-area-inset-bottom)+0.375rem)]"
     >
       <ul className="mx-auto flex max-w-lg items-stretch">
         {TABS.map((tab) => {
