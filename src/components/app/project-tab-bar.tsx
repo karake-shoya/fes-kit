@@ -39,9 +39,9 @@ export function ProjectTabBar({ projectId }: { projectId: string }) {
   return (
     <nav
       aria-label="プロジェクト内ナビゲーション"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85 pb-[calc(env(safe-area-inset-bottom)+0.375rem)]"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-border/80 bg-card/95 shadow-[0_-1px_12px_-4px_rgba(0,0,0,0.12)] backdrop-blur-lg supports-[backdrop-filter]:bg-card/75 pb-[calc(env(safe-area-inset-bottom)+0.375rem)]"
     >
-      <ul className="mx-auto flex max-w-lg items-stretch">
+      <ul className="mx-auto flex max-w-lg items-stretch px-1 pt-1.5">
         {TABS.map((tab) => {
           const target = `${base}${tab.href}`;
           // ホームタブは設定画面でも点灯させる（設定はホームから開くため）
@@ -54,15 +54,21 @@ export function ProjectTabBar({ projectId }: { projectId: string }) {
               <Link
                 href={target}
                 aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
-                  active
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
+                // タップ領域はセル全幅に保ち、見た目のピルは内側の span に閉じ込める
+                className="flex w-full flex-col items-center py-1.5 text-[10px] font-medium"
               >
-                <tab.Icon className={cn("h-5 w-5", active && "stroke-[2.25]")} />
-                {tab.label}
+                <span
+                  className={cn(
+                    // アクティブ時は角丸ピル背景で現在地を明示
+                    "flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1 transition-colors",
+                    active
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <tab.Icon className={cn("h-5 w-5", active && "stroke-[2.25]")} />
+                  {tab.label}
+                </span>
               </Link>
             </li>
           );
