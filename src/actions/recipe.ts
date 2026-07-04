@@ -100,6 +100,30 @@ export async function setRecipeSellingPrice(
   revalidatePath(`/projects/${projectId}/recipes/${recipeId}`);
 }
 
+// 作る予定数のみを更新する軽量アクション（詳細ページのインライン編集用）
+// 買い出しリストの必要量計算に使うため、設定ダイアログを開かなくても直接調整できるようにする
+export async function setRecipeServings(
+  recipeId: string,
+  projectId: string,
+  servingsRaw: string | number
+) {
+  const userId = await requireAuth();
+  await assertProjectAccess(projectId, userId, "editor");
+  await assertRecipeInProject(recipeId, projectId);
+
+  const servings = parsePositiveInt(String(servingsRaw), "作る予定数", 1);
+
+  await db
+    .update(recipes)
+    .set({ servings, updatedAt: new Date().toISOString() })
+    .where(and(eq(recipes.id, recipeId), eq(recipes.projectId, projectId)));
+
+  revalidatePath(`/projects/${projectId}/recipes`);
+  revalidatePath(`/projects/${projectId}/recipes/${recipeId}`);
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/shopping-list`);
+}
+
 // レシピに材料を追加、または使用量を更新する（upsert）
 export async function setRecipeIngredient(
   recipeId: string,
@@ -126,6 +150,7 @@ export async function setRecipeIngredient(
 
   revalidatePath(`/projects/${projectId}/recipes`);
   revalidatePath(`/projects/${projectId}/recipes/${recipeId}`);
+  revalidatePath(`/projects/${projectId}/shopping-list`);
 }
 
 // レシピから材料を外す
@@ -151,4 +176,5 @@ export async function removeRecipeIngredient(
 
   revalidatePath(`/projects/${projectId}/recipes`);
   revalidatePath(`/projects/${projectId}/recipes/${recipeId}`);
+  revalidatePath(`/projects/${projectId}/shopping-list`);
 }

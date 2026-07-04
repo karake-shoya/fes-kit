@@ -145,7 +145,8 @@ export function RecipeDialog({ projectId, recipe, redirectOnCreate, children }: 
             </div>
           </div>
           <p className="text-xs text-muted-foreground/70 -mt-2">
-            販売価格は「1個（1皿）あたり」の値段を入れてください。
+            販売価格は「1個（1皿）あたり」の値段を入れてください。<br />
+            作る予定数は「買い出しリスト」の必要量の計算に使われます。
           </p>
 
           <div className="flex flex-col gap-1.5">
