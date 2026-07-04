@@ -3,8 +3,9 @@ import { requireAuth } from "@/lib/auth";
 import { getProject, getMyRole } from "@/db/queries/projects";
 import { ProjectSettingsForm } from "@/components/app/project-settings-form";
 import { DeleteProjectButton } from "@/components/app/delete-project-button";
+import { InviteSection } from "@/components/app/invite-section";
 import { AppHeader } from "@/components/app/app-header";
-import { ROLE_LABEL } from "@/lib/format";
+import { ROLE_LABEL, PILL_CLASS } from "@/lib/format";
 
 export default async function ProjectSettingsPage({
   params,
@@ -52,13 +53,21 @@ export default async function ProjectSettingsPage({
                   <span className="text-sm font-medium text-foreground truncate">{m.name ?? m.email}</span>
                   {m.name && <span className="text-xs text-muted-foreground/70 truncate">{m.email}</span>}
                 </div>
-                <span className="ml-auto text-xs text-primary bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5 shrink-0">
+                <span className={`${PILL_CLASS} ml-auto shrink-0`}>
                   {ROLE_LABEL[m.role]}
                 </span>
               </li>
             ))}
           </ul>
         </section>
+
+        {/* メンバー招待（オーナーのみ） */}
+        {isOwner && (
+          <section className="bg-card rounded-2xl border border-border px-4 py-4 flex flex-col gap-3">
+            <h2 className="font-semibold text-foreground">メンバーを招待</h2>
+            <InviteSection projectId={id} />
+          </section>
+        )}
 
         {/* 危険操作 */}
         {isOwner && (

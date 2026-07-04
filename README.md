@@ -13,7 +13,7 @@
 |---|---|---|
 | フレームワーク | Next.js (App Router) | v16系 / Turbopack |
 | 言語 | TypeScript | strict mode |
-| UI | shadcn/ui + Radix UI + Tailwind CSS v4 | アイコンは Hugeicons / lucide-react |
+| UI | shadcn/ui + Radix UI + Tailwind CSS v4 | アイコンは lucide-react、フォントは Figtree（欧文）+ Zen Maru Gothic（和文） |
 | 認証 | Clerk (`@clerk/nextjs` v7) | Webhookでユーザーを同期 |
 | DB | Turso (libSQL / SQLite互換) | Embedded Replica対応 |
 | ORM | Drizzle ORM | |
@@ -35,11 +35,12 @@
 |---|---|---|
 | 認証 | ✅ | Clerk によるサインイン／サインアップ、Webhook（svix検証）で `users` を同期 |
 | プロジェクトCRUD・権限管理 | ✅ | 1イベント=1プロジェクト。`owner` / `editor` / `viewer` のロール |
+| プロジェクトホーム | ✅ | イベント日カウントダウン・準備進捗バー・赤字商品の警告・直近タスク表示 |
 | 材料マスタ管理 | ✅ | 仕入れ単価・単位・購入数量・仕入れ先を登録（プロジェクト単位） |
 | レシピ管理・利益率計算 | ✅ | 材料の使用量から原価・利益・利益率をライブ計算（後述） |
 | スケジュール管理 | ✅ | カレンダー／一覧表示、月フィルタ、スワイプ削除、ステータス管理 |
 | 試作品記録 | ✅ | 試作日・結果（good / needs_improvement / failed）・メモ・写真（R2） |
-| 共有機能（招待リンク） | ⬜ | スキーマ（`project_invitations`）は準備済み。実装は今後 |
+| 共有機能（招待リンク） | ✅ | オーナーがロール付きURLを発行（72時間有効・1回使い切り）。コピー／OS共有シート対応 |
 
 ### 画面構成（ルーティング）
 
@@ -53,9 +54,13 @@
 /projects/[id]/recipes/[recipeId]       レシピ詳細（利益率調整）
 /projects/[id]/schedule                 スケジュール
 /projects/[id]/prototypes               試作記録
-/projects/[id]/settings                 プロジェクト設定
+/projects/[id]/settings                 プロジェクト設定（招待リンクの発行を含む）
+/invite/[token]                         招待リンクの受諾（要ログイン）
 /api/webhooks/clerk                     Clerk Webhook 受信
 ```
+
+プロジェクト配下の画面には**下部タブバー**（ホーム／材料／レシピ／予定／試作）を常設し、
+スマホの親指で届く位置から1タップで画面を切り替えられます（PWAのsafe-area対応）。
 
 PWA対応（`src/app/manifest.ts`）。ホーム画面に追加するとスタンドアロン・縦向きで起動します。
 

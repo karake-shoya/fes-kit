@@ -1,14 +1,56 @@
 import Link from "next/link";
-import { UtensilsCrossed, CalendarDays } from "lucide-react";
+import Image from "next/image";
+import { CalendarDays } from "lucide-react";
 import { requireAuth } from "@/lib/auth";
 import { getMyProjects } from "@/db/queries/projects";
 import { CreateProjectDialog } from "@/components/app/create-project-dialog";
 import { AppHeader } from "@/components/app/app-header";
-import { ROLE_LABEL, formatDate } from "@/lib/format";
+import { ROLE_LABEL, PILL_CLASS, formatDate, todayYmd, daysUntil } from "@/lib/format";
+
+type ProjectRow = Awaited<ReturnType<typeof getMyProjects>>[number];
+
+// イベントが近いものを上に並べる。
+// 未来のイベント（近い順）→ 日付未設定（作成順）→ 終了済み（新しい順）
+function sortByEventDate(projects: ProjectRow[], today: string): ProjectRow[] {
+  const upcoming = projects
+    .filter((p) => p.eventDate && p.eventDate >= today)
+    .sort((a, b) => a.eventDate!.localeCompare(b.eventDate!));
+  const undated = projects.filter((p) => !p.eventDate);
+  const past = projects
+    .filter((p) => p.eventDate && p.eventDate < today)
+    .sort((a, b) => b.eventDate!.localeCompare(a.eventDate!));
+  return [...upcoming, ...undated, ...past];
+}
+
+// イベント日の残り日数バッジ（当日・7日以内は強調）
+function CountdownChip({ eventDate, today }: { eventDate: string; today: string }) {
+  const days = daysUntil(eventDate, today);
+  if (days < 0) {
+    return (
+      <span className="text-[10px] text-muted-foreground/70 bg-muted rounded-full px-2 py-0.5">
+        終了
+      </span>
+    );
+  }
+  const label = days === 0 ? "今日！" : `あと${days}日`;
+  const near  = days <= 7;
+  return (
+    <span
+      className={`text-[10px] rounded-full px-2 py-0.5 border tabular-nums ${
+        near
+          ? "text-primary-foreground bg-primary border-primary font-semibold"
+          : "text-primary bg-primary/10 border-primary/20"
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
 
 export default async function DashboardPage() {
   const userId  = await requireAuth();
-  const projects = await getMyProjects(userId);
+  const today   = todayYmd();
+  const projects = sortByEventDate(await getMyProjects(userId), today);
 
   return (
     <div className="min-h-screen bg-background">
@@ -18,8 +60,14 @@ export default async function DashboardPage() {
         <CreateProjectDialog />
 
         {projects.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <UtensilsCrossed className="w-12 h-12 text-muted-foreground/40" />
+          <div className="flex flex-col items-center gap-4 py-14 text-center">
+            <Image
+              src="/mascot.png"
+              alt=""
+              width={96}
+              height={96}
+              className="h-24 w-24 object-contain opacity-80"
+            />
             <p className="text-muted-foreground text-sm leading-relaxed">
               まだプロジェクトがありません。<br />
               上のボタンから最初のプロジェクトを作りましょう！
@@ -43,9 +91,12 @@ export default async function DashboardPage() {
                           <span className="text-sm text-muted-foreground line-clamp-2 mt-1">{p.description}</span>
                         )}
                       </div>
-                      <span className="shrink-0 text-xs text-primary bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5">
-                        {ROLE_LABEL[p.myRole]}
-                      </span>
+                      <div className="shrink-0 flex flex-col items-end gap-1">
+                        <span className={PILL_CLASS}>
+                          {ROLE_LABEL[p.myRole]}
+                        </span>
+                        {p.eventDate && <CountdownChip eventDate={p.eventDate} today={today} />}
+                      </div>
                     </div>
                   </div>
                 </Link>
