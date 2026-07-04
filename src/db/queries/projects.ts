@@ -2,7 +2,7 @@ import { db } from "@/db/db";
 import { projects, projectMembers, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
-// 自分が参加しているプロジェクト一覧（メンバー数付き）
+// 自分が参加しているプロジェクト一覧（作成者名付き）
 export async function getMyProjects(userId: string) {
   const rows = await db
     .select({
@@ -11,11 +11,14 @@ export async function getMyProjects(userId: string) {
       description: projects.description,
       eventDate:   projects.eventDate,
       ownerId:     projects.ownerId,
+      ownerName:   users.name,
+      ownerEmail:  users.email,
       createdAt:   projects.createdAt,
       myRole:      projectMembers.role,
     })
     .from(projectMembers)
     .innerJoin(projects, eq(projects.id, projectMembers.projectId))
+    .leftJoin(users, eq(users.id, projects.ownerId))
     .where(eq(projectMembers.userId, userId))
     .orderBy(projects.createdAt);
 

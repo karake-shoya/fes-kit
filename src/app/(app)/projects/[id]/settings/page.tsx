@@ -5,6 +5,7 @@ import { ProjectSettingsForm } from "@/components/app/project-settings-form";
 import { DeleteProjectButton } from "@/components/app/delete-project-button";
 import { InviteSection } from "@/components/app/invite-section";
 import { AppHeader } from "@/components/app/app-header";
+import { MemberAvatar } from "@/components/app/member-avatar";
 import { ROLE_LABEL, PILL_CLASS } from "@/lib/format";
 
 export default async function ProjectSettingsPage({
@@ -41,14 +42,7 @@ export default async function ProjectSettingsPage({
           <ul className="flex flex-col gap-2">
             {project.members.map((m) => (
               <li key={m.userId} className="flex items-center gap-3">
-                {m.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={m.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                    {(m.name ?? m.email)[0].toUpperCase()}
-                  </div>
-                )}
+                <MemberAvatar name={m.name} email={m.email} avatarUrl={m.avatarUrl} />
                 <div className="flex flex-col min-w-0">
                   <span className="text-sm font-medium text-foreground truncate">{m.name ?? m.email}</span>
                   {m.name && <span className="text-xs text-muted-foreground/70 truncate">{m.email}</span>}

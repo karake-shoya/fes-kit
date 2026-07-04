@@ -17,6 +17,7 @@ import { assertProjectAccess } from "@/db/queries/auth";
 import { getProjectStats, getUpcomingSchedules } from "@/db/queries/stats";
 import { getRecipes } from "@/db/queries/recipes";
 import { AppHeader } from "@/components/app/app-header";
+import { MemberAvatar, AVATAR_FALLBACK_CLASS } from "@/components/app/member-avatar";
 import { formatDate, todayYmd, daysUntil } from "@/lib/format";
 import { formatDateRange, STATUS_STYLE } from "@/lib/schedule";
 
@@ -68,6 +69,31 @@ export default async function ProjectPage({
       />
 
       <main className="px-4 py-6 flex flex-col gap-4 max-w-lg mx-auto">
+        {/* メンバー（タップで設定ページへ） */}
+        <Link
+          href={`/projects/${id}/settings`}
+          className="flex items-center gap-2 active:opacity-70 transition-opacity"
+        >
+          <div className="flex -space-x-2">
+            {project.members.slice(0, 4).map((m) => (
+              <MemberAvatar
+                key={m.userId}
+                name={m.name}
+                email={m.email}
+                avatarUrl={m.avatarUrl}
+                className="ring-2 ring-background"
+              />
+            ))}
+            {project.members.length > 4 && (
+              <div className={`${AVATAR_FALLBACK_CLASS} ring-2 ring-background`}>
+                +{project.members.length - 4}
+              </div>
+            )}
+          </div>
+          <span className="text-xs text-muted-foreground">メンバー {project.members.length}人</span>
+          <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
+        </Link>
+
         {/* イベントまでのカウントダウン + 準備の進みぐあい */}
         <CountdownHero
           eventDate={project.eventDate}
@@ -146,10 +172,6 @@ export default async function ProjectPage({
             </li>
           ))}
         </ul>
-
-        <div className="text-xs text-muted-foreground/70 text-center mt-2">
-          メンバー {project.members.length}人
-        </div>
       </main>
     </>
   );
