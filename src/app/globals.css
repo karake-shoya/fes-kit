@@ -128,10 +128,16 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+    /* 端でのゴムバウンド（無駄スクロール）とネイティブの下引き更新を抑制。
+       下引き更新はカスタムの PullToRefresh で代替する */
+    overscroll-behavior-y: none;
+  }
+  body {
+    @apply bg-background text-foreground;
+    /* 高さ基準は body の min-h-dvh ユーティリティに統一（iOS Safari の
+       アドレスバー分のずれ対策）。ここでは端のバウンス抑制のみ担う */
+    overscroll-behavior-y: none;
   }
 }

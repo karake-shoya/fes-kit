@@ -64,6 +64,11 @@
 
 PWA対応（`src/app/manifest.ts`）。ホーム画面に追加するとスタンドアロン・縦向きで起動します。
 
+### スクロールと引っ張って更新（Pull to Refresh）
+
+- 画面の高さ基準を `100dvh` に統一し、`overscroll-behavior-y: none` でネイティブのゴムバウンド（無駄なスクロール）を抑制しています。高さ・背景は `src/app/(app)/layout.tsx` の共通ラッパーが一括で担保します。
+- PWAスタンドアロンではブラウザ標準の下引き更新が効かないため、`src/components/app/pull-to-refresh.tsx` で**画面最上部から下方向に引っ張ると更新**するカスタム挙動を全画面共通で実装しています。閾値を超えて指を離すと `router.refresh()` でServer Componentのデータを再取得します。
+
 ---
 
 ## レシピと利益率（スマホUI）

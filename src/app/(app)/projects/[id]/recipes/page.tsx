@@ -27,7 +27,7 @@ export default async function RecipesPage({
   const canEdit = myRole === "owner" || myRole === "editor";
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <AppHeader
         title="レシピ"
         backHref={`/projects/${id}`}
@@ -95,6 +95,6 @@ export default async function RecipesPage({
           </ul>
         )}
       </main>
-    </div>
+    </>
   );
 }

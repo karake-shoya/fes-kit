@@ -45,7 +45,7 @@ export default function RootLayout({
       lang="ja"
       className={cn("h-full", "antialiased", "font-sans", figtree.variable, zenMaru.variable)}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-dvh flex flex-col">
         <ClerkProvider localization={jaJP} appearance={{ theme: shadcn }}>
           {children}
         </ClerkProvider>
