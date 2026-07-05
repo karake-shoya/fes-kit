@@ -77,6 +77,15 @@ export function groupSchedulesByDay(list: Schedule[]): [string, Schedule[]][] {
   return Array.from(groups.entries());
 }
 
+// 開始日ごとの件数（カレンダーの件数バッジ用）
+export function countSchedulesByDay(list: Schedule[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const s of list) {
+    counts.set(s.startDate, (counts.get(s.startDate) ?? 0) + 1);
+  }
+  return counts;
+}
+
 // ステータスでグループ化する（STATUS_ORDER の順で返す）。
 // list は startDate 昇順前提のため、各グループ内は自然に日付順になる。
 // 該当タスクが0件のステータスは返さない。
