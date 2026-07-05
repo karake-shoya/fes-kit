@@ -137,6 +137,24 @@ export const schedules = sqliteTable("schedules", {
   projectIdIdx: index("idx_schedules_project_id").on(t.projectId),
 }));
 
+// 持ち物・準備チェックリスト（プロジェクトスコープ）
+// category: tool=道具 / ingredient=材料 / document=書類
+export const checklistItems = sqliteTable("checklist_items", {
+  id:        text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  label:     text("label").notNull(),
+  category:  text("category", { enum: ["tool", "ingredient", "document"] })
+               .notNull().default("tool"),
+  checked:   integer("checked", { mode: "boolean" }).notNull().default(false),
+  memo:      text("memo"), // 買い出しリストからの一括インポート時のみ、必要量のスナップショットを自動セット
+  // 買い出しリストからインポートした行だけ紐づく。再インポート時の重複防止に使う（手動追加はnull）
+  sourceIngredientId: text("source_ingredient_id").references(() => ingredients.id, { onDelete: "set null" }),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+}, (t) => ({
+  projectIdIdx: index("idx_checklist_items_project_id").on(t.projectId),
+}));
+
 // 型エクスポート
 export type User              = typeof users.$inferSelect;
 export type Project           = typeof projects.$inferSelect;
@@ -148,3 +166,4 @@ export type RecipeIngredient  = typeof recipeIngredients.$inferSelect;
 export type PrototypeLog      = typeof prototypeLogs.$inferSelect;
 export type SalesRecord       = typeof salesRecords.$inferSelect;
 export type Schedule          = typeof schedules.$inferSelect;
+export type ChecklistItem     = typeof checklistItems.$inferSelect;
