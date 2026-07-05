@@ -5,6 +5,7 @@ import { getMyProjects } from "@/db/queries/projects";
 import { CreateProjectDialog } from "@/components/app/create-project-dialog";
 import { AppHeader } from "@/components/app/app-header";
 import { ProjectCard, type ProjectRow } from "@/components/app/project-card";
+import { ChangelogSection } from "@/components/app/changelog-section";
 import { todayYmd } from "@/lib/format";
 
 // イベントが近いものを上に並べる。
@@ -86,6 +87,8 @@ export default async function DashboardPage() {
             ))}
           </ul>
         )}
+
+        <ChangelogSection />
       </main>
     </>
   );
