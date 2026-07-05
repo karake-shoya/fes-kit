@@ -5,6 +5,8 @@ import { and, count, eq, gte, ne, sql } from "drizzle-orm";
 // プロジェクトホームのサマリー用の集計。
 // 各画面への主導線をタブバーに集約したため、ホームで使うのは
 // タスクの完了数／総数（進捗バー用）のみ。
+// 持ち物チェックとの合算は呼び出し元（ホームページ）で getChecklistStats の結果と
+// 組み合わせて行う（同じ集計を二重にクエリしないため、ここではスケジュールのみを返す）。
 export async function getProjectStats(projectId: string) {
   // タスクの総数と完了数は同じ行への集計なので1クエリにまとめる
   const [tasks] = await db

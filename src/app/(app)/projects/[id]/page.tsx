@@ -9,6 +9,7 @@ import {
   PartyPopper,
   TriangleAlert,
   ListTodo,
+  ClipboardList,
 } from "lucide-react";
 import { requireAuth } from "@/lib/auth";
 import { getProject } from "@/db/queries/projects";
@@ -17,6 +18,7 @@ import { getProjectStats, getUpcomingSchedules } from "@/db/queries/stats";
 import { getRecipes } from "@/db/queries/recipes";
 import { getShoppingListItemCount } from "@/db/queries/shopping-list";
 import { getSalesRecordCount } from "@/db/queries/sales-records";
+import { getChecklistStats } from "@/db/queries/checklist";
 import { AppHeader } from "@/components/app/app-header";
 import { MemberAvatar, AVATAR_FALLBACK_CLASS } from "@/components/app/member-avatar";
 import { formatDate, todayYmd, daysUntil } from "@/lib/format";
@@ -31,13 +33,14 @@ export default async function ProjectPage({
   const userId  = await requireAuth();
   const today   = todayYmd();
 
-  const [project, stats, upcoming, recipeList, shoppingListCount, salesRecordCount] = await Promise.all([
+  const [project, stats, upcoming, recipeList, shoppingListCount, salesRecordCount, checklistStats] = await Promise.all([
     getProject(id),
     getProjectStats(id),
     getUpcomingSchedules(id, today),
     getRecipes(id),
     getShoppingListItemCount(id),
     getSalesRecordCount(id),
+    getChecklistStats(id),
     assertProjectAccess(id, userId).catch(() => notFound()),
   ]);
 
@@ -51,8 +54,9 @@ export default async function ProjectPage({
   // 各画面への主導線は下部タブバーに集約し、ホームにはタブバーに乗らない
   // サブ機能（買い出しリスト・実績記録）への入口だけをカードで置く
   const navItems = [
-    { href: "shopping-list", label: "買い出しリスト",   Icon: ShoppingBasket, desc: "レシピから必要な買い出し量を計算",   badge: `${shoppingListCount}点` },
-    { href: "results",       label: "売上・実績記録",   Icon: Store,          desc: "当日の作った数・売れた数を記録",     badge: `記録 ${salesRecordCount}/${recipeList.length}品` },
+    { href: "shopping-list", label: "買い出しリスト",           Icon: ShoppingBasket, desc: "レシピから必要な買い出し量を計算",   badge: `${shoppingListCount}点` },
+    { href: "checklist",     label: "持ち物・準備チェックリスト", Icon: ClipboardList,  desc: "当日持っていく道具・材料をチェック", badge: `${checklistStats.checked}/${checklistStats.total}` },
+    { href: "results",       label: "売上・実績記録",           Icon: Store,          desc: "当日の作った数・売れた数を記録",     badge: `記録 ${salesRecordCount}/${recipeList.length}品` },
   ] as const;
 
   return (
@@ -97,13 +101,14 @@ export default async function ProjectPage({
           <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
         </Link>
 
-        {/* イベントまでのカウントダウン + 準備の進みぐあい */}
+        {/* イベントまでのカウントダウン + 準備の進みぐあい
+            （スケジュールタスク＋持ち物チェックを合算した1つの指標として表示） */}
         <CountdownHero
           eventDate={project.eventDate}
           today={today}
           projectId={id}
-          tasksDone={stats.tasksDone}
-          tasksTotal={stats.tasksTotal}
+          tasksDone={stats.tasksDone + checklistStats.checked}
+          tasksTotal={stats.tasksTotal + checklistStats.total}
         />
 
         {/* 赤字レシピの注意喚起 */}
