@@ -1,18 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { isSameMonth } from "date-fns";
 import { CalendarDays, ListTodo } from "lucide-react";
 import { ScheduleCalendar } from "@/components/app/schedule-calendar";
 import { ScheduleCard } from "@/components/app/schedule-card";
 import { ScheduleDayModal } from "@/components/app/schedule-day-modal";
 import { EventDayBadge } from "@/components/app/schedule-day-heading";
-import { useScheduleMonth } from "@/components/app/schedule-month";
 import {
   STATUS_STYLE,
   EVENT_DAY_STYLE,
   formatDayHeading,
-  ymdToDate,
   countSchedulesByDay,
   groupSchedulesByDay,
   groupSchedulesByStatus,
@@ -34,14 +31,9 @@ export function ScheduleBoard({ projectId, eventDate, canEdit, schedules }: Prop
   const [listGroupBy, setListGroupBy] = useState<ListGroupBy>("day");
   // 日付タップで開くボトムシートの対象日（YYYY-MM-DD）
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  // カレンダーで表示中の月（ヘッダーの「今月」ボタンと共有）
-  const { month } = useScheduleMonth();
 
   // カレンダーの件数バッジ用: 全タスクを開始日ごとに集計
   const taskCounts = countSchedulesByDay(schedules);
-
-  // カレンダータブ: 表示中の月（開始日基準）のタスクのみ（空状態判定に使用）
-  const monthly = schedules.filter((s) => isSameMonth(ymdToDate(s.startDate), month));
 
   // ボトムシートに表示する、選択中の日の予定
   const selectedDaySchedules = selectedDay
@@ -61,18 +53,7 @@ export function ScheduleBoard({ projectId, eventDate, canEdit, schedules }: Prop
       </div>
 
       {tab === "calendar" ? (
-        <div className="flex flex-col gap-6">
-          <ScheduleCalendar taskCounts={taskCounts} eventDate={eventDate} onSelectDay={setSelectedDay} />
-          {monthly.length === 0 && (
-            <EmptyState>
-              <CalendarDays className="w-12 h-12 text-muted-foreground/40" />
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                この月の予定はありません。<br />
-                月を切り替えるか「追加」で登録しましょう。
-              </p>
-            </EmptyState>
-          )}
-        </div>
+        <ScheduleCalendar taskCounts={taskCounts} eventDate={eventDate} onSelectDay={setSelectedDay} />
       ) : (
         <div className="flex flex-col gap-4">
           {/* グループ方法の切り替え */}
