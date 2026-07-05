@@ -21,10 +21,12 @@ type Props = {
 const ACTION_WIDTH = 80;
 // スワイプ／タップ／縦スクロールを判定する遊び(px)
 const SLOP = 8;
+// 常時わずかに見せる「奥に何かある」ヒント幅(px)。閉じた状態はここが基準になる
+const HINT_WIDTH = 12;
 
 // タスク1件分のカード。日付順・ステータス別どちらのグループからも再利用する。
 export function ScheduleCard({ schedule: s, projectId, canEdit }: Props) {
-  const [offset, setOffset] = useState(0); // 前面カードの左方向オフセット（0 〜 -ACTION_WIDTH）
+  const [offset, setOffset] = useState(-HINT_WIDTH); // 前面カードの左方向オフセット（-HINT_WIDTH 〜 -ACTION_WIDTH）
   const [dragging, setDragging] = useState(false); // ドラッグ中はトランジションを切る
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -36,7 +38,7 @@ export function ScheduleCard({ schedule: s, projectId, canEdit }: Props) {
   const baseOffset = useRef(0);
   const axis = useRef<null | "h" | "v">(null);
   const moved = useRef(false);
-  const offsetRef = useRef(0);
+  const offsetRef = useRef(-HINT_WIDTH);
 
   function setOffsetBoth(next: number) {
     offsetRef.current = next;
@@ -62,15 +64,16 @@ export function ScheduleCard({ schedule: s, projectId, canEdit }: Props) {
     }
     if (axis.current !== "h") return;
     moved.current = true;
-    const next = Math.max(-ACTION_WIDTH, Math.min(0, baseOffset.current + dx));
+    // 常時ヒントを見せ続けるため、右方向にも -HINT_WIDTH より内側には戻さない
+    const next = Math.max(-ACTION_WIDTH, Math.min(-HINT_WIDTH, baseOffset.current + dx));
     setOffsetBoth(next);
   }
 
   function handleTouchEnd() {
     setDragging(false);
     if (axis.current === "h") {
-      // 半分以上引いていれば開く、それ以外は閉じる
-      setOffsetBoth(offsetRef.current <= -ACTION_WIDTH / 2 ? -ACTION_WIDTH : 0);
+      // 半分以上引いていれば開く、それ以外はヒント位置に戻す
+      setOffsetBoth(offsetRef.current <= -ACTION_WIDTH / 2 ? -ACTION_WIDTH : -HINT_WIDTH);
     }
     // 直後の click を抑止するためのフラグは次フレームで解除
     requestAnimationFrame(() => {
@@ -81,10 +84,10 @@ export function ScheduleCard({ schedule: s, projectId, canEdit }: Props) {
   // 開いている／スワイプ直後はカード本体のタップ（編集・ステータス）を無効化し、
   // 代わりにカードを閉じる
   function handleFrontClickCapture(e: React.MouseEvent) {
-    if (offsetRef.current !== 0 || moved.current) {
+    if (offsetRef.current !== -HINT_WIDTH || moved.current) {
       e.preventDefault();
       e.stopPropagation();
-      setOffsetBoth(0);
+      setOffsetBoth(-HINT_WIDTH);
     }
   }
 
@@ -93,7 +96,7 @@ export function ScheduleCard({ schedule: s, projectId, canEdit }: Props) {
       try {
         await deleteSchedule(s.id, projectId);
         setConfirmOpen(false);
-        setOffsetBoth(0);
+        setOffsetBoth(-HINT_WIDTH);
         router.refresh();
       } catch {
         // 失敗時はモーダルを開いたまま（再試行可能）
@@ -142,16 +145,22 @@ export function ScheduleCard({ schedule: s, projectId, canEdit }: Props) {
     return <li className="flex">{cardInner}</li>;
   }
 
+  // ヒント表示中（軽く引かれているだけ）か、削除ボタンとして機能する状態まで引かれたか
+  const revealed = offset <= -ACTION_WIDTH / 2;
+
   return (
     <li className="relative overflow-hidden rounded-xl">
-      {/* 背面の削除ボタン（左スワイプで現れる） */}
+      {/* 背面の削除ボタン。常に薄いヒントが覗いており、半分以上引くと赤に切り替わる */}
       <div className="absolute inset-y-0 right-0 flex">
         <button
           type="button"
-          onClick={() => setConfirmOpen(true)}
+          onClick={() => revealed && setConfirmOpen(true)}
           aria-label="この予定を削除"
+          tabIndex={revealed ? 0 : -1}
           style={{ width: ACTION_WIDTH }}
-          className="flex flex-col items-center justify-center gap-0.5 bg-red-500 text-white text-xs font-medium active:bg-red-600"
+          className={`flex flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors duration-150 ${
+            revealed ? "bg-red-500 text-white active:bg-red-600" : "bg-muted text-transparent"
+          }`}
         >
           <Trash2 className="w-5 h-5" />
           削除

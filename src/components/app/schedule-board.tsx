@@ -2,15 +2,18 @@
 
 import { useState } from "react";
 import { isSameMonth } from "date-fns";
-import { CalendarDays, ListTodo, PartyPopper } from "lucide-react";
+import { CalendarDays, ListTodo } from "lucide-react";
 import { ScheduleCalendar } from "@/components/app/schedule-calendar";
 import { ScheduleCard } from "@/components/app/schedule-card";
+import { ScheduleDayModal } from "@/components/app/schedule-day-modal";
+import { EventDayBadge } from "@/components/app/schedule-day-heading";
 import { useScheduleMonth } from "@/components/app/schedule-month";
 import {
   STATUS_STYLE,
   EVENT_DAY_STYLE,
   formatDayHeading,
   ymdToDate,
+  countSchedulesByDay,
   groupSchedulesByDay,
   groupSchedulesByStatus,
 } from "@/lib/schedule";
@@ -29,14 +32,21 @@ type ListGroupBy = "day" | "status";
 export function ScheduleBoard({ projectId, eventDate, canEdit, schedules }: Props) {
   const [tab, setTab] = useState<Tab>("calendar");
   const [listGroupBy, setListGroupBy] = useState<ListGroupBy>("day");
+  // 日付タップで開くボトムシートの対象日（YYYY-MM-DD）
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   // カレンダーで表示中の月（ヘッダーの「今月」ボタンと共有）
   const { month } = useScheduleMonth();
 
-  // カレンダーのドット用: 全タスクの開始日
-  const taskDates = Array.from(new Set(schedules.map((s) => s.startDate)));
+  // カレンダーの件数バッジ用: 全タスクを開始日ごとに集計
+  const taskCounts = countSchedulesByDay(schedules);
 
-  // カレンダータブ: 表示中の月（開始日基準）のタスクのみ
+  // カレンダータブ: 表示中の月（開始日基準）のタスクのみ（空状態判定に使用）
   const monthly = schedules.filter((s) => isSameMonth(ymdToDate(s.startDate), month));
+
+  // ボトムシートに表示する、選択中の日の予定
+  const selectedDaySchedules = selectedDay
+    ? schedules.filter((s) => s.startDate === selectedDay)
+    : [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -52,8 +62,8 @@ export function ScheduleBoard({ projectId, eventDate, canEdit, schedules }: Prop
 
       {tab === "calendar" ? (
         <div className="flex flex-col gap-6">
-          <ScheduleCalendar taskDates={taskDates} eventDate={eventDate} />
-          {monthly.length === 0 ? (
+          <ScheduleCalendar taskCounts={taskCounts} eventDate={eventDate} onSelectDay={setSelectedDay} />
+          {monthly.length === 0 && (
             <EmptyState>
               <CalendarDays className="w-12 h-12 text-muted-foreground/40" />
               <p className="text-muted-foreground text-sm leading-relaxed">
@@ -61,8 +71,6 @@ export function ScheduleBoard({ projectId, eventDate, canEdit, schedules }: Prop
                 月を切り替えるか「追加」で登録しましょう。
               </p>
             </EmptyState>
-          ) : (
-            <DayGroups groups={groupSchedulesByDay(monthly)} eventDate={eventDate} projectId={projectId} canEdit={canEdit} />
           )}
         </div>
       ) : (
@@ -94,6 +102,15 @@ export function ScheduleBoard({ projectId, eventDate, canEdit, schedules }: Prop
           )}
         </div>
       )}
+
+      <ScheduleDayModal
+        ymd={selectedDay}
+        onClose={() => setSelectedDay(null)}
+        schedules={selectedDaySchedules}
+        eventDate={eventDate}
+        projectId={projectId}
+        canEdit={canEdit}
+      />
     </div>
   );
 }
@@ -168,11 +185,7 @@ function DayGroups({
           <section key={day} id={`day-${day}`} className="flex flex-col gap-2 scroll-mt-4">
             <h2 className={`text-sm font-semibold px-1 ${isEventDay ? EVENT_DAY_STYLE.text : "text-muted-foreground"}`}>
               {formatDayHeading(day)}
-              {isEventDay && (
-                <span className="ml-2 inline-flex items-center gap-1">
-                  <PartyPopper className="w-4 h-4" /> {EVENT_DAY_STYLE.label}
-                </span>
-              )}
+              {isEventDay && <EventDayBadge />}
             </h2>
             <ul className="flex flex-col gap-2">
               {items.map((s) => (
