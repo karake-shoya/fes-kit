@@ -109,6 +109,17 @@ export const prototypeLogs = sqliteTable("prototype_logs", {
   recipeIdIdx: index("idx_prototype_logs_recipe_id").on(t.recipeId),
 }));
 
+// 当日の売上・実績記録（1レシピにつき当日1レコード、都度上書き）
+// 見込み利益（cost.profit × servings）と実績利益（cost.profit × soldCount）の比較に使う
+export const salesRecords = sqliteTable("sales_records", {
+  recipeId:  text("recipe_id").primaryKey().references(() => recipes.id, { onDelete: "cascade" }),
+  madeCount: integer("made_count").notNull().default(0), // 作った数
+  soldCount: integer("sold_count").notNull().default(0), // 売れた数
+  memo:      text("memo"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
 // スケジュール（開始日・終了日対応）
 // 1日タスクは startDate === endDate
 export const schedules = sqliteTable("schedules", {
@@ -135,4 +146,5 @@ export type Ingredient        = typeof ingredients.$inferSelect;
 export type Recipe            = typeof recipes.$inferSelect;
 export type RecipeIngredient  = typeof recipeIngredients.$inferSelect;
 export type PrototypeLog      = typeof prototypeLogs.$inferSelect;
+export type SalesRecord       = typeof salesRecords.$inferSelect;
 export type Schedule          = typeof schedules.$inferSelect;

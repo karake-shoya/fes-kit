@@ -4,10 +4,8 @@ import {
   Settings,
   CalendarDays,
   ChevronRight,
-  ShoppingCart,
   ShoppingBasket,
-  ClipboardList,
-  CookingPot,
+  Store,
   PartyPopper,
   TriangleAlert,
   ListTodo,
@@ -18,6 +16,7 @@ import { assertProjectAccess } from "@/db/queries/auth";
 import { getProjectStats, getUpcomingSchedules } from "@/db/queries/stats";
 import { getRecipes } from "@/db/queries/recipes";
 import { getShoppingListItemCount } from "@/db/queries/shopping-list";
+import { getSalesRecordCount } from "@/db/queries/sales-records";
 import { AppHeader } from "@/components/app/app-header";
 import { MemberAvatar, AVATAR_FALLBACK_CLASS } from "@/components/app/member-avatar";
 import { formatDate, todayYmd, daysUntil } from "@/lib/format";
@@ -32,12 +31,13 @@ export default async function ProjectPage({
   const userId  = await requireAuth();
   const today   = todayYmd();
 
-  const [project, stats, upcoming, recipeList, shoppingListCount] = await Promise.all([
+  const [project, stats, upcoming, recipeList, shoppingListCount, salesRecordCount] = await Promise.all([
     getProject(id),
     getProjectStats(id),
     getUpcomingSchedules(id, today),
     getRecipes(id),
     getShoppingListItemCount(id),
+    getSalesRecordCount(id),
     assertProjectAccess(id, userId).catch(() => notFound()),
   ]);
 
@@ -48,12 +48,11 @@ export default async function ProjectPage({
     (r) => r.ingredientCount > 0 && r.cost.profitRate < 0
   ).length;
 
+  // 各画面への主導線は下部タブバーに集約し、ホームにはタブバーに乗らない
+  // サブ機能（買い出しリスト・実績記録）への入口だけをカードで置く
   const navItems = [
-    { href: "ingredients",   label: "材料マスタ",     Icon: ShoppingCart,   desc: "食材の単価・購入量を管理",     badge: `${stats.ingredients}件` },
-    { href: "recipes",       label: "レシピ",         Icon: ClipboardList,  desc: "商品と原価・利益率を計算",     badge: `${recipeList.length}品` },
-    { href: "shopping-list", label: "買い出しリスト", Icon: ShoppingBasket, desc: "レシピから必要な買い出し量を計算", badge: `${shoppingListCount}点` },
-    { href: "schedule",      label: "スケジュール",   Icon: CalendarDays,   desc: "準備〜当日の作業を管理",       badge: stats.tasksTotal > 0 ? `${stats.tasksDone}/${stats.tasksTotal}` : "0件" },
-    { href: "prototypes",    label: "試作記録",       Icon: CookingPot,     desc: "試作の感想・写真を残す",       badge: `${stats.prototypes}回` },
+    { href: "shopping-list", label: "買い出しリスト",   Icon: ShoppingBasket, desc: "レシピから必要な買い出し量を計算",   badge: `${shoppingListCount}点` },
+    { href: "results",       label: "売上・実績記録",   Icon: Store,          desc: "当日の作った数・売れた数を記録",     badge: `記録 ${salesRecordCount}/${recipeList.length}品` },
   ] as const;
 
   return (
@@ -225,16 +224,36 @@ function CountdownHero({
           </p>
         </div>
       ) : days === 0 ? (
-        <div className="flex items-center gap-2">
-          <PartyPopper className="w-6 h-6 text-primary shrink-0" />
-          <p className="text-lg font-bold text-foreground">今日が本番です！がんばりましょう</p>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <PartyPopper className="w-6 h-6 text-primary shrink-0" />
+            <p className="text-lg font-bold text-foreground">今日が本番です！がんばりましょう</p>
+          </div>
+          {/* 当日に一番使う機能への導線 */}
+          <Link
+            href={`/projects/${projectId}/results`}
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground active:opacity-80 transition-opacity"
+          >
+            <Store className="w-4 h-4" />
+            売上・実績を記録する
+          </Link>
         </div>
       ) : (
-        <div className="flex flex-col gap-0.5">
-          <p className="text-sm font-semibold text-foreground">イベントは終了しました</p>
-          <p className="text-xs text-muted-foreground">
-            おつかれさまでした（{formatDate(eventDate!)}）
-          </p>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-0.5">
+            <p className="text-sm font-semibold text-foreground">イベントは終了しました</p>
+            <p className="text-xs text-muted-foreground">
+              おつかれさまでした（{formatDate(eventDate!)}）
+            </p>
+          </div>
+          {/* ふりかえり用に実績記録への導線を残す */}
+          <Link
+            href={`/projects/${projectId}/results`}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary active:opacity-80 transition-opacity"
+          >
+            <Store className="w-4 h-4" />
+            売上・実績をふりかえる
+          </Link>
         </div>
       )}
 

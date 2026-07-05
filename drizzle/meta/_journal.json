@@ -15,6 +15,13 @@
       "when": 1782914944287,
       "tag": "0001_cuddly_rhino",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1783215453283,
+      "tag": "0002_dry_wolf_cub",
+      "breakpoints": true
     }
   ]
 }
