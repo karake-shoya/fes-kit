@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import type { ChangeEvent, FocusEvent, KeyboardEvent } from "react";
 import { Sparkles, Ghost, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -9,6 +8,7 @@ import { RecipeIngredientEditor } from "@/components/app/recipe-ingredient-edito
 import { setRecipeSellingPrice, setRecipeServings } from "@/actions/recipe";
 import { suggestSellingPrice, type PriceSuggestion } from "@/actions/ai-price";
 import { useKeyedDebounce } from "@/lib/use-keyed-debounce";
+import { useDraftNumberInput } from "@/lib/use-draft-number-input";
 import { calcRecipeCost, roundUpTo, priceForTargetCostRate, type RecipeCostRow } from "@/lib/recipe-cost";
 import { formatYen, profitStyle, costRateStyle } from "@/lib/format";
 
@@ -33,43 +33,6 @@ type Props = {
   canEdit: boolean;
   aiEnabled: boolean;              // AI_GATEWAY_API_KEY 設定時のみ true
 };
-
-// 数値インライン編集の共通ロジック（フォーカスで編集バッファ化→blurで確定）。
-// 販売価格・作る予定数など「その場で編集→即保存」という同じパターンを持つ
-// 数値フィールドで共用し、境界値チェック・丸め処理だけを呼び出し側で指定する。
-function useDraftNumberInput(
-  value: number,
-  onCommit: (next: number) => void,
-  { isValid, integer = false }: { isValid: (raw: number) => boolean; integer?: boolean }
-) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const inputValue = draft ?? String(Math.round(value));
-
-  function onFocus(e: FocusEvent<HTMLInputElement>) {
-    setDraft(inputValue);
-    e.currentTarget.select();
-  }
-
-  function onChange(e: ChangeEvent<HTMLInputElement>) {
-    setDraft(e.target.value);
-  }
-
-  // 不正値は無視して元の値を維持
-  function onBlur() {
-    if (draft === null) return;
-    const cleaned = draft.trim().replace(/,/g, "");
-    const raw = Number(cleaned);
-    setDraft(null);
-    if (cleaned === "" || Number.isNaN(raw) || !isValid(raw)) return;
-    onCommit(integer ? Math.floor(raw) : raw);
-  }
-
-  function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") e.currentTarget.blur();
-  }
-
-  return { inputValue, onFocus, onChange, onBlur, onKeyDown };
-}
 
 // レシピ詳細の「利益サマリー＋材料エディタ」を束ねるクライアントパネル。
 // スライダー操作中はサーバーを待たずクライアント側で利益率を即時再計算し、

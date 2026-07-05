@@ -45,6 +45,8 @@ export async function createRecipe(projectId: string, formData: FormData) {
     .returning();
 
   revalidatePath(`/projects/${projectId}/recipes`);
+  revalidatePath(`/projects/${projectId}/results`);
+  revalidatePath(`/projects/${projectId}`); // ホームのバッジ（記録 X/Y品 の分母）
   return { recipeId: recipe.id };
 }
 
@@ -65,6 +67,7 @@ export async function updateRecipe(
 
   revalidatePath(`/projects/${projectId}/recipes`);
   revalidatePath(`/projects/${projectId}/recipes/${recipeId}`);
+  revalidatePath(`/projects/${projectId}/results`);
 }
 
 export async function deleteRecipe(recipeId: string, projectId: string) {
@@ -76,6 +79,8 @@ export async function deleteRecipe(recipeId: string, projectId: string) {
     .where(and(eq(recipes.id, recipeId), eq(recipes.projectId, projectId)));
 
   revalidatePath(`/projects/${projectId}/recipes`);
+  revalidatePath(`/projects/${projectId}/results`);
+  revalidatePath(`/projects/${projectId}`); // ホームのバッジ（記録 X/Y品 の分母）
 }
 
 // 販売価格のみを更新する軽量アクション（スライダーのドラッグ確定時に呼ぶ）
@@ -98,6 +103,7 @@ export async function setRecipeSellingPrice(
 
   revalidatePath(`/projects/${projectId}/recipes`);
   revalidatePath(`/projects/${projectId}/recipes/${recipeId}`);
+  revalidatePath(`/projects/${projectId}/results`);
 }
 
 // 作る予定数のみを更新する軽量アクション（詳細ページのインライン編集用）
@@ -122,6 +128,7 @@ export async function setRecipeServings(
   revalidatePath(`/projects/${projectId}/recipes/${recipeId}`);
   revalidatePath(`/projects/${projectId}`);
   revalidatePath(`/projects/${projectId}/shopping-list`);
+  revalidatePath(`/projects/${projectId}/results`);
 }
 
 // レシピに材料を追加、または使用量を更新する（upsert）
@@ -151,6 +158,7 @@ export async function setRecipeIngredient(
   revalidatePath(`/projects/${projectId}/recipes`);
   revalidatePath(`/projects/${projectId}/recipes/${recipeId}`);
   revalidatePath(`/projects/${projectId}/shopping-list`);
+  revalidatePath(`/projects/${projectId}/results`);
 }
 
 // レシピから材料を外す
@@ -177,4 +185,5 @@ export async function removeRecipeIngredient(
   revalidatePath(`/projects/${projectId}/recipes`);
   revalidatePath(`/projects/${projectId}/recipes/${recipeId}`);
   revalidatePath(`/projects/${projectId}/shopping-list`);
+  revalidatePath(`/projects/${projectId}/results`);
 }

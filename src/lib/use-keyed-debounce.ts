@@ -11,13 +11,18 @@ import { useEffect, useRef } from "react";
 export function useKeyedDebounce(
   delay: number
 ): [(key: string, fn: () => void) => void, (key: string) => void] {
-  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const timers = useRef(new Map<string, { timer: ReturnType<typeof setTimeout>; fn: () => void }>());
 
-  // アンマウント時に保留中のタイマーを破棄
+  // アンマウント時は保留分を破棄せず即時実行（flush）する。
+  // 入力直後（delay内）に画面遷移すると保存が丸ごと消えるのを防ぐ。
+  // cancel() 済みのkeyはMapから消えているため復活保存にはならない。
   useEffect(() => {
     const map = timers.current;
     return () => {
-      map.forEach((t) => clearTimeout(t));
+      map.forEach(({ timer, fn }) => {
+        clearTimeout(timer);
+        fn();
+      });
       map.clear();
     };
   }, []);
@@ -25,20 +30,20 @@ export function useKeyedDebounce(
   const cancel = (key: string) => {
     const existing = timers.current.get(key);
     if (existing) {
-      clearTimeout(existing);
+      clearTimeout(existing.timer);
       timers.current.delete(key);
     }
   };
 
   const schedule = (key: string, fn: () => void) => {
     cancel(key);
-    timers.current.set(
-      key,
-      setTimeout(() => {
+    timers.current.set(key, {
+      fn,
+      timer: setTimeout(() => {
         timers.current.delete(key);
         fn();
-      }, delay)
-    );
+      }, delay),
+    });
   };
 
   return [schedule, cancel];

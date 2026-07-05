@@ -38,3 +38,12 @@
 - async params: `params: Promise<{ id: string }>` → `const { id } = await params`
 
 ---
+
+## Claude Codeのpreviewツールに関する制約
+
+- Clerk認証が必要なページ（サインイン後の画面）は `preview_*` ツールで確認しない。Clerkのホスト型サインインが `*.clerk.accounts.dev` にリダイレクトし、previewツールはlocalhost以外へのリダイレクトをブロックするため確認できない。
+- previewツールの利用は公開ページ（`/`, `/sign-in`, `/sign-up` など認証不要なルート）のみに限定する。
+- 認証後の画面の動作確認は、ユーザー自身が通常のブラウザで `http://localhost:3000` を開いて行う（Claude側では実施しない・依頼もしない）。
+- 開発環境で認証をバイパスする対応は行わない（`src/proxy.ts` や各所の `auth()`/`currentUser()` 呼び出しに影響する設計変更のため、必要な場合は事前にPlanモードで承認を得る）。
+
+---

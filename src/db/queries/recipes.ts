@@ -8,19 +8,11 @@ import { calcRecipeCost, type RecipeCostRow, type RecipeCost } from "@/lib/recip
 export { calcRecipeCost } from "@/lib/recipe-cost";
 export type { RecipeCostRow, RecipeCost } from "@/lib/recipe-cost";
 
-// レシピ一覧（各レシピの原価・利益率付き）
-// recipes と材料行を一括取得し、JSでレシピ単位に集約してN+1を回避する
-export async function getRecipes(projectId: string) {
-  const recipeRows = await db
-    .select()
-    .from(recipes)
-    .where(eq(recipes.projectId, projectId))
-    // createdAt は秒精度のため同秒作成の順序が揺れる。id を第2キーに安定化する
-    .orderBy(recipes.createdAt, recipes.id);
-
-  if (recipeRows.length === 0) return [];
-
-  // このプロジェクトの全レシピ材料行をまとめて取得
+// プロジェクトの全レシピ材料行を一括取得し、recipeId ごとに束ねて返す。
+// 原価計算の入力行の定義はここ1箇所に集約する（一覧・実績ページで共用）
+export async function getRecipeCostRowsByRecipe(
+  projectId: string
+): Promise<Map<string, RecipeCostRow[]>> {
   const ingredientRows = await db
     .select({
       recipeId:        recipeIngredients.recipeId,
@@ -36,7 +28,6 @@ export async function getRecipes(projectId: string) {
     .innerJoin(ingredients, eq(ingredients.id, recipeIngredients.ingredientId))
     .where(eq(recipes.projectId, projectId));
 
-  // recipeId ごとに材料行を束ねる
   const byRecipe = new Map<string, RecipeCostRow[]>();
   for (const row of ingredientRows) {
     const { recipeId, ...rest } = row;
@@ -44,6 +35,22 @@ export async function getRecipes(projectId: string) {
     list.push(rest);
     byRecipe.set(recipeId, list);
   }
+  return byRecipe;
+}
+
+// レシピ一覧（各レシピの原価・利益率付き）
+// recipes と材料行を一括取得し、JSでレシピ単位に集約してN+1を回避する
+export async function getRecipes(projectId: string) {
+  const recipeRows = await db
+    .select()
+    .from(recipes)
+    .where(eq(recipes.projectId, projectId))
+    // createdAt は秒精度のため同秒作成の順序が揺れる。id を第2キーに安定化する
+    .orderBy(recipes.createdAt, recipes.id);
+
+  if (recipeRows.length === 0) return [];
+
+  const byRecipe = await getRecipeCostRowsByRecipe(projectId);
 
   return recipeRows.map((recipe) => {
     const rows = byRecipe.get(recipe.id) ?? [];
