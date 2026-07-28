@@ -19,6 +19,7 @@
 | ORM | Drizzle ORM | |
 | ストレージ | Cloudflare R2 (S3互換) | 試作写真のアップロード |
 | デプロイ | Vercel | |
+| テスト | Vitest | 原価計算・入力パース・買い出し積算など、DB非依存の純粋ロジックのみ |
 | ランタイム | Node.js v22 LTS（v20以上必須） | |
 
 ### Next.js 16の注意点
@@ -46,6 +47,8 @@
 | 試作品記録 | ✅ | 試作日・結果（good / needs_improvement / failed）・メモ・写真（R2） |
 | 共有機能（招待リンク） | ✅ | オーナーがロール付きURLを発行（72時間有効・1回使い切り）。コピー／OS共有シート対応 |
 | 更新履歴 | ✅ | ダッシュボードに機能追加のお知らせを一覧表示（`src/lib/changelog.ts` に手動で追記） |
+| エラー時の復帰 | ✅ | 予期しないエラーでも白画面にせず、やさしい案内と「やりなおす」を出す（`src/app/(app)/error.tsx`） |
+| 失敗の通知 | ✅ | チェック・状態切り替え・削除に失敗したとき、画面下に短く知らせる（`src/components/app/toast.tsx`） |
 
 ### 画面構成（ルーティング）
 
@@ -72,6 +75,25 @@
 タブバーに乗らないサブ機能（買い出しリスト・持ち物チェックリスト・売上・実績記録）へは、ホームのカードから遷移します。
 
 PWA対応（`src/app/manifest.ts`）。ホーム画面に追加するとスタンドアロン・縦向きで起動します。
+
+### 画面遷移の速さ（スケルトンとストリーミング）
+
+DBがリモート（Turso）にあるため、クエリの完了を待って画面を出すとタップの反応が鈍く感じられます。
+そこで2段構えで「まず画面が出る」ようにしています。
+
+- **`loading.tsx` を階層に置く** — `src/app/(app)/projects/[id]/loading.tsx` があるため、
+  タブを切り替えても**下部タブバーとレイアウトは残ったまま**、中身だけがスケルトンに差し替わります
+  （`(app)/loading.tsx` だけだと画面全体が消えてしまいます）。骨格は
+  `src/components/app/page-skeleton.tsx` に共通化しています。
+- **ホームは Suspense で分割** — プロジェクトホームは7本の問い合わせを使いますが、
+  プロジェクト本体（名前・イベント日・メンバー）だけを待って枠を描き、
+  進捗バー・赤字警告・次にやること・サブ機能カードは `<Suspense>` で届いた順に流し込みます。
+  一番遅い1本が画面全体を止めません。
+
+### 操作の手応え（楽観的更新）
+
+持ち物のチェックとスケジュールの状態切り替えは、タップした瞬間に見た目を変え（`useOptimistic`）、
+サーバーの結果が返った時点で実際の値に置き換えます。失敗したときは元に戻し、画面下に短く知らせます。
 
 ### スクロールと引っ張って更新（Pull to Refresh）
 
@@ -169,16 +191,31 @@ src/
 │   ├── manifest.ts / icon.tsx / apple-icon.tsx   PWA・アイコン
 ├── components/
 │   ├── app/        画面固有コンポーネント（ダイアログ・カレンダー・編集UI 等）
+│   │               共通の骨格: entity-form-dialog（追加/編集ダイアログ）
+│   │                           swipe-action-card（左スワイプ削除）
+│   │                           page-shell（本文枠・空状態）／page-skeleton／toast
 │   └── ui/         shadcn/ui プリミティブ
 ├── db/
 │   ├── schema.ts   Drizzle スキーマ定義
 │   ├── db.ts       libSQL クライアント（Embedded Replica対応・シングルトン）
 │   └── queries/    テーブル別クエリ関数
-├── lib/            ユーティリティ（auth, r2, recipe-cost, schedule, format 等）
+├── lib/            ユーティリティ（auth, revalidate, r2, recipe-cost, schedule, format 等）
+│                   *.test.ts が隣に並ぶ（純粋ロジックのみ）
 └── proxy.ts        Clerk ミドルウェア（公開ルート以外を保護）
 
 drizzle/            生成されたマイグレーション
 ```
+
+### 機能を足すときの作法
+
+同じ形のコードが散らばらないよう、次の4つは共通の入口を通します。
+
+| やること | 使うもの |
+|---|---|
+| ページで権限を見る | `requireProjectPage(projectId)`（`src/lib/auth.ts`）。await せず `Promise.all` に渡して本体データ取得と並列にする |
+| Server Action で権限を見る | `requireProjectRole(projectId, "editor")`（既定は editor。オーナー限定は `"owner"`） |
+| 保存後に画面を更新する | `revalidateProject(projectId, "recipes")`（`src/lib/revalidate.ts`）。**個別に `revalidatePath` を書かない** — どのデータがどの画面に波及するかは対応表1箇所で管理する |
+| 追加・編集ダイアログを作る | `useEntityDialog()` ＋ `<EntityFormDialog>`。フォームの項目だけを書けばよい |
 
 ---
 
@@ -253,6 +290,8 @@ Clerk ダッシュボードで `/api/webhooks/clerk` をエンドポイントに
 | `npm run build` | 本番ビルド |
 | `npm run start` | 本番サーバー起動 |
 | `npm run lint` | ESLint |
+| `npm run test` | Vitest（純粋ロジックのテストを1回実行） |
+| `npm run test:watch` | Vitest（監視モード） |
 | `npm run db:generate` | マイグレーション生成 |
 | `npm run db:migrate` | マイグレーション適用 |
 | `npm run db:studio` | Drizzle Studio 起動 |

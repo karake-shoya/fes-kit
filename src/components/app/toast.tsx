@@ -40,8 +40,10 @@ export function Toaster() {
     <div
       role="status"
       aria-live="polite"
-      // タブバーの上に重ならないよう、safe-area＋タブバー分を持ち上げる
-      className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4 pointer-events-none"
+      // タブバーの上に重ならないよう、safe-area＋タブバー分を持ち上げる。
+      // 削除確認モーダル（Radixのポータル・z-50）を開いたまま出ることがあるため、
+      // それより上（z-60）に置かないとオーバーレイの下に隠れて見えない。
+      className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-60 flex justify-center px-4 pointer-events-none"
     >
       <div className="flex items-center gap-2 rounded-2xl bg-foreground/90 px-4 py-3 text-sm text-background shadow-lg backdrop-blur">
         <TriangleAlert className="w-4 h-4 shrink-0" />
