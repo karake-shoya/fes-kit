@@ -40,23 +40,28 @@ const AFFECTED_SCREENS: Record<ProjectData, Screen[]> = {
   salesRecords: ["home"],
 };
 
-function pathOf(screen: Screen, projectId: string, recipeId?: string): string {
+// 再検証するパスと、その範囲（page = そのページだけ / layout = 配下のページも含む）
+type Target = { path: string; type?: "layout" };
+
+function targetOf(screen: Screen, projectId: string, recipeId?: string): Target {
   const base = `/projects/${projectId}`;
   switch (screen) {
-    case "home":          return base;
-    case "settings":      return `${base}/settings`;
-    case "ingredients":   return `${base}/ingredients`;
-    case "recipes":       return `${base}/recipes`;
-    // レシピIDが分かっていればその1件、分からなければ動的ルートごと再検証する
-    // （材料の単価変更は、その材料を使う全レシピの詳細に効くため）
+    case "home":          return { path: base };
+    case "settings":      return { path: `${base}/settings` };
+    case "ingredients":   return { path: `${base}/ingredients` };
+    case "recipes":       return { path: `${base}/recipes` };
+    // レシピIDが分かっていればその1件だけ。
+    // 分からない場合（材料の単価変更など、影響が複数レシピに散る操作）は
+    // /recipes 配下をまとめて再検証する。動的ルートのパターン指定にすると
+    // 他プロジェクトのレシピ詳細まで巻き込むため、このプロジェクト配下に閉じる。
     case "recipeDetail":  return recipeId
-      ? `${base}/recipes/${recipeId}`
-      : "/projects/[id]/recipes/[recipeId]";
-    case "shoppingList":  return `${base}/shopping-list`;
-    case "checklist":     return `${base}/checklist`;
-    case "schedule":      return `${base}/schedule`;
-    case "prototypes":    return `${base}/prototypes`;
-    case "results":       return `${base}/results`;
+      ? { path: `${base}/recipes/${recipeId}` }
+      : { path: `${base}/recipes`, type: "layout" };
+    case "shoppingList":  return { path: `${base}/shopping-list` };
+    case "checklist":     return { path: `${base}/checklist` };
+    case "schedule":      return { path: `${base}/schedule` };
+    case "prototypes":    return { path: `${base}/prototypes` };
+    case "results":       return { path: `${base}/results` };
   }
 }
 
@@ -70,9 +75,8 @@ export function revalidateProject(
   opts?: { recipeId?: string }
 ) {
   for (const screen of AFFECTED_SCREENS[data]) {
-    const path = pathOf(screen, projectId, opts?.recipeId);
-    // 動的ルートのパターン指定はページ単位の再検証として渡す
-    if (path.includes("[")) revalidatePath(path, "page");
+    const { path, type } = targetOf(screen, projectId, opts?.recipeId);
+    if (type) revalidatePath(path, type);
     else revalidatePath(path);
   }
 }
