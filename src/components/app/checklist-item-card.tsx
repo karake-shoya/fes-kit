@@ -1,10 +1,10 @@
 "use client";
 
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useOptimistic, useTransition } from "react";
 import { Check } from "lucide-react";
 import { ChecklistDialog } from "@/components/app/checklist-dialog";
 import { SwipeActionCard } from "@/components/app/swipe-action-card";
+import { showToast } from "@/components/app/toast";
 import { deleteChecklistItem, toggleChecklistItem } from "@/actions/checklist";
 import type { ChecklistItem } from "@/db/schema";
 
@@ -18,7 +18,9 @@ type Props = {
 // 持ち物1件分のカード。カテゴリ別グループから再利用する。
 export function ChecklistItemCard({ item, projectId, canEdit }: Props) {
   const [isPending, startTransition] = useTransition();
-  const router = useRouter();
+  // タップした瞬間にチェックを反転して見せる。サーバーの結果が返れば
+  // 実際の値に置き換わり、失敗した場合は元の見た目に戻る
+  const [checked, setChecked] = useOptimistic(item.checked);
 
   function handleToggle(e: React.MouseEvent) {
     // 親カードの編集ダイアログが開かないよう伝播を止める
@@ -26,11 +28,11 @@ export function ChecklistItemCard({ item, projectId, canEdit }: Props) {
     e.preventDefault();
     if (!canEdit || isPending) return;
     startTransition(async () => {
+      setChecked(!item.checked);
       try {
         await toggleChecklistItem(item.id, projectId);
-        router.refresh();
       } catch {
-        // 失敗時は何もしない（次タップで再試行可能）
+        showToast("チェックを保存できませんでした");
       }
     });
   }
@@ -40,15 +42,15 @@ export function ChecklistItemCard({ item, projectId, canEdit }: Props) {
       type="button"
       onClick={handleToggle}
       disabled={!canEdit || isPending}
-      aria-label={item.checked ? "未チェックに戻す" : "チェックする"}
-      aria-pressed={item.checked}
+      aria-label={checked ? "未チェックに戻す" : "チェックする"}
+      aria-pressed={checked}
       className={`grid size-6 shrink-0 place-items-center rounded-full border-2 transition-colors ${
-        item.checked
+        checked
           ? "border-primary bg-primary text-primary-foreground"
           : "border-muted-foreground/30 bg-transparent"
-      } ${canEdit ? "active:scale-95 transition-transform" : ""} ${isPending ? "opacity-50" : ""}`}
+      } ${canEdit ? "active:scale-95 transition-transform" : ""}`}
     >
-      {item.checked && <Check className="w-4 h-4" />}
+      {checked && <Check className="w-4 h-4" />}
     </button>
   );
 
@@ -57,7 +59,7 @@ export function ChecklistItemCard({ item, projectId, canEdit }: Props) {
     <div className="flex flex-col min-w-0">
       <span
         className={`text-sm font-medium truncate ${
-          item.checked ? "text-muted-foreground line-through" : "text-foreground"
+          checked ? "text-muted-foreground line-through" : "text-foreground"
         }`}
       >
         {item.label}

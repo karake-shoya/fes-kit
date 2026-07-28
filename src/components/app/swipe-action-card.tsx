@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/app/confirm-delete-dialog";
+import { showToast } from "@/components/app/toast";
 
 // 左スワイプで現れる削除ボタンの幅(px)
 const ACTION_WIDTH = 80;
@@ -115,7 +116,8 @@ export function SwipeActionCard({
         setOffsetBoth(closed);
         router.refresh();
       } catch {
-        // 失敗時はモーダルを開いたまま（再試行可能）
+        // モーダルは開いたままにして再試行できるようにし、失敗したことは伝える
+        showToast("削除できませんでした");
       }
     });
   }
