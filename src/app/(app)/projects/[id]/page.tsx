@@ -11,6 +11,8 @@ import {
   TriangleAlert,
   ListTodo,
   ClipboardList,
+  Wallet,
+  Calculator,
 } from "lucide-react";
 import { requireAuth, projectAccessOf } from "@/lib/auth";
 import { getProject } from "@/db/queries/projects";
@@ -19,10 +21,13 @@ import { getRecipes } from "@/db/queries/recipes";
 import { getShoppingListItemCount } from "@/db/queries/shopping-list";
 import { getSalesRecordCount } from "@/db/queries/sales-records";
 import { getChecklistStats } from "@/db/queries/checklist";
+import { getExpenseSummary } from "@/db/queries/expenses";
+import { toBreakevenRecipes } from "@/db/queries/simulation";
+import { calcBreakeven } from "@/lib/breakeven";
 import { AppHeader } from "@/components/app/app-header";
 import { PageMain } from "@/components/app/page-shell";
 import { MemberAvatar, AVATAR_FALLBACK_CLASS } from "@/components/app/member-avatar";
-import { formatDate, todayYmd, daysUntil } from "@/lib/format";
+import { formatDate, todayYmd, daysUntil, formatYen } from "@/lib/format";
 import { formatDateRange, STATUS_STYLE } from "@/lib/schedule";
 
 /**
@@ -51,13 +56,14 @@ export default async function ProjectPage({
   const upcomingPromise      = getUpcomingSchedules(id, today);
   const shoppingCountPromise = getShoppingListItemCount(id);
   const salesCountPromise    = getSalesRecordCount(id);
+  const expensePromise       = getExpenseSummary(id);
 
   // 下の notFound() で描画を打ち切ると、上の Promise は誰にも await されずに終わる。
   // そのとき失敗していると unhandledRejection になるため、空のハンドラを付けて
   // 「処理済み」にしておく（各カードが await したときは従来どおり例外が上がる）。
   for (const p of [
     statsPromise, checklistPromise, recipesPromise,
-    upcomingPromise, shoppingCountPromise, salesCountPromise,
+    upcomingPromise, shoppingCountPromise, salesCountPromise, expensePromise,
   ]) {
     p.catch(() => {});
   }
@@ -140,7 +146,7 @@ export default async function ProjectPage({
           </p>
         )}
 
-        {/* タブバーに乗らないサブ機能（買い出し・持ち物・実績）への入口 */}
+        {/* タブバーに乗らないサブ機能（買い出し・持ち物・お金まわり・実績）への入口 */}
         <Suspense fallback={<SubFeatureNavSkeleton />}>
           <SubFeatureNav
             projectId={id}
@@ -148,6 +154,7 @@ export default async function ProjectPage({
             checklist={checklistPromise}
             shoppingCount={shoppingCountPromise}
             salesCount={salesCountPromise}
+            expenses={expensePromise}
           />
         </Suspense>
       </PageMain>
@@ -266,23 +273,26 @@ async function SubFeatureNav({
   checklist,
   shoppingCount,
   salesCount,
+  expenses,
 }: {
   projectId: string;
   recipes: ReturnType<typeof getRecipes>;
   checklist: ReturnType<typeof getChecklistStats>;
   shoppingCount: ReturnType<typeof getShoppingListItemCount>;
   salesCount: ReturnType<typeof getSalesRecordCount>;
+  expenses: ReturnType<typeof getExpenseSummary>;
 }) {
-  const [recipeList, checklistStats, shoppingListCount, salesRecordCount] = await Promise.all([
-    recipes,
-    checklist,
-    shoppingCount,
-    salesCount,
-  ]);
+  const [recipeList, checklistStats, shoppingListCount, salesRecordCount, expenseSummary] =
+    await Promise.all([recipes, checklist, shoppingCount, salesCount, expenses]);
+
+  // 損益分岐点はレシピとかかるお金から計算できるため、追加の問い合わせなしでバッジに出す
+  const breakeven = calcBreakeven(toBreakevenRecipes(recipeList), expenseSummary.total);
 
   const navItems = [
     { href: "shopping-list", label: "買い出しリスト",           Icon: ShoppingBasket, desc: "レシピから必要な買い出し量を計算",   badge: `${shoppingListCount}点` },
     { href: "checklist",     label: "持ち物・準備チェックリスト", Icon: ClipboardList,  desc: "当日持っていく道具・材料をチェック", badge: `${checklistStats.checked}/${checklistStats.total}` },
+    { href: "expenses",      label: "かかるお金",               Icon: Wallet,         desc: "出店料・レンタル代など固定の費用",   badge: expenseSummary.count === 0 ? "未登録" : formatYen(expenseSummary.total) },
+    { href: "simulation",    label: "採算シミュレーション",      Icon: Calculator,     desc: "何個売ればトントンかを計算",         badge: breakeven.status === "ok" ? `${breakeven.totalQuantity}個` : "—" },
     { href: "results",       label: "売上・実績記録",           Icon: Store,          desc: "当日の作った数・売れた数を記録",     badge: `記録 ${salesRecordCount}/${recipeList.length}品` },
   ] as const;
 
@@ -315,7 +325,7 @@ async function SubFeatureNav({
 function SubFeatureNavSkeleton() {
   return (
     <ul className="flex flex-col gap-3">
-      {[0, 1, 2].map((i) => (
+      {[0, 1, 2, 3, 4].map((i) => (
         <li
           key={i}
           className="bg-card rounded-2xl border border-border px-4 py-4 shadow-sm flex items-center gap-4"

@@ -15,20 +15,23 @@ export type ProjectData =
   | "schedules"    // スケジュール
   | "checklist"    // 持ち物・準備チェックリスト
   | "prototypes"   // 試作記録
-  | "salesRecords";// 当日の売上・実績
+  | "salesRecords" // 当日の売上・実績
+  | "expenses";    // かかるお金（固定費）
 
 // プロジェクト配下の画面
 type Screen =
   | "home" | "settings" | "ingredients" | "recipes" | "recipeDetail"
-  | "shoppingList" | "checklist" | "schedule" | "prototypes" | "results";
+  | "shoppingList" | "checklist" | "schedule" | "prototypes" | "results"
+  | "expenses" | "simulation";
 
 // データ → 影響を受ける画面
 const AFFECTED_SCREENS: Record<ProjectData, Screen[]> = {
-  project:     ["home", "settings"],
+  // 想定来場者数は採算シミュレーションの購入率判定に効く
+  project:     ["home", "settings", "simulation"],
   // 材料の単価・購入数量はレシピの原価、買い出しの必要量、実績の利益にそのまま効く
-  ingredients: ["ingredients", "recipes", "recipeDetail", "shoppingList", "results", "home"],
+  ingredients: ["ingredients", "recipes", "recipeDetail", "shoppingList", "results", "home", "simulation"],
   // レシピの販売価格・作る予定数・材料構成も同じ範囲に波及する（ホームは赤字商品の警告とバッジ）
-  recipes:     ["recipes", "recipeDetail", "shoppingList", "results", "home"],
+  recipes:     ["recipes", "recipeDetail", "shoppingList", "results", "home", "simulation"],
   // ホームの「準備の進みぐあい」「次にやること」はスケジュールの完了数を見ている
   schedules:   ["schedule", "home"],
   // ホームの進捗バーは持ち物のチェック数も合算している
@@ -38,6 +41,8 @@ const AFFECTED_SCREENS: Record<ProjectData, Screen[]> = {
   // 保存のたびに再レンダーが返ると連打編集中の値が古いサーバー値へ巻き戻るため
   // （再訪時は動的レンダーで整合する）。ホームのバッジだけ更新する。
   salesRecords: ["home"],
+  // かかるお金は損益分岐点の分子そのもの。ホームのカードにも合計を出している
+  expenses:     ["expenses", "simulation", "home"],
 };
 
 // 再検証するパスと、その範囲（page = そのページだけ / layout = 配下のページも含む）
@@ -62,6 +67,8 @@ function targetOf(screen: Screen, projectId: string, recipeId?: string): Target 
     case "schedule":      return { path: `${base}/schedule` };
     case "prototypes":    return { path: `${base}/prototypes` };
     case "results":       return { path: `${base}/results` };
+    case "expenses":      return { path: `${base}/expenses` };
+    case "simulation":    return { path: `${base}/simulation` };
   }
 }
 

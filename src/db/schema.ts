@@ -24,6 +24,9 @@ export const projects = sqliteTable("projects", {
   name:        text("name").notNull(),
   description: text("description"),
   eventDate:   text("event_date"),              // YYYY-MM-DD
+  // 想定来場者数。採算シミュレーションで「何人に1人が買う想定か（購入率）」の
+  // 分母に使い、非現実的な販売個数を警告する。未入力なら購入率は出さない
+  expectedVisitors: integer("expected_visitors"),
   ownerId:     text("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   createdAt:   text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt:   text("updated_at").notNull().default(sql`(datetime('now'))`),
@@ -155,6 +158,21 @@ export const checklistItems = sqliteTable("checklist_items", {
   projectIdIdx: index("idx_checklist_items_project_id").on(t.projectId),
 }));
 
+// かかるお金（個数に比例しない費用＝固定費。出店料・テントレンタル・ガスボンベなど）
+// 材料費と違い商品に紐づかないため、プロジェクト単位のリストとして持つ。
+// 容器・割り箸のような1個ごとにかかる費用は、材料マスタ側に登録して原価に含める
+export const projectExpenses = sqliteTable("project_expenses", {
+  id:        text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  label:     text("label").notNull(),           // 費目名（例：出店料）
+  amount:    real("amount").notNull(),          // 金額（円）
+  memo:      text("memo"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+}, (t) => ({
+  projectIdIdx: index("idx_project_expenses_project_id").on(t.projectId),
+}));
+
 // 型エクスポート
 export type User              = typeof users.$inferSelect;
 export type Project           = typeof projects.$inferSelect;
@@ -167,3 +185,4 @@ export type PrototypeLog      = typeof prototypeLogs.$inferSelect;
 export type SalesRecord       = typeof salesRecords.$inferSelect;
 export type Schedule          = typeof schedules.$inferSelect;
 export type ChecklistItem     = typeof checklistItems.$inferSelect;
+export type ProjectExpense    = typeof projectExpenses.$inferSelect;

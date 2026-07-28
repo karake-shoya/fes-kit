@@ -82,6 +82,17 @@ export async function getProjectMeta(projectId: string) {
   return project ?? null;
 }
 
+// 想定来場者数だけを引く軽量クエリ（採算シミュレーションの購入率判定に使う）
+export async function getExpectedVisitors(projectId: string): Promise<number | null> {
+  const [project] = await db
+    .select({ expectedVisitors: projects.expectedVisitors })
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .limit(1);
+
+  return project?.expectedVisitors ?? null;
+}
+
 // AI 診断のコンテキスト用（プロジェクト名・説明・イベント日）の軽量クエリ
 export async function getProjectContext(projectId: string) {
   const [project] = await db
