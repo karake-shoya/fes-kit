@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { requireAuth } from "@/lib/auth";
-import { getProject, getMyRole } from "@/db/queries/projects";
+import { requireAuth, projectAccessOf } from "@/lib/auth";
+import { getProject } from "@/db/queries/projects";
 import { ProjectSettingsForm } from "@/components/app/project-settings-form";
 import { DeleteProjectButton } from "@/components/app/delete-project-button";
 import { InviteSection } from "@/components/app/invite-section";
@@ -13,17 +13,16 @@ export default async function ProjectSettingsPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id }  = await params;
-  const userId  = await requireAuth();
-  const project = await getProject(id);
+  const { id } = await params;
 
+  const [userId, project] = await Promise.all([requireAuth(), getProject(id)]);
   if (!project) notFound();
 
-  const myRole = await getMyRole(id, userId);
-  if (!myRole) notFound();
-
-  const canEdit   = myRole === "owner" || myRole === "editor";
-  const isOwner   = myRole === "owner";
+  // メンバー一覧を取得済みなので、自分のロールはそこから読む（同じ問い合わせを二度しない）
+  const { canEdit, isOwner } = projectAccessOf(
+    userId,
+    project.members.find((m) => m.userId === userId)?.role
+  );
 
   return (
     <>

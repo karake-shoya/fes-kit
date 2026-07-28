@@ -1,11 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { db } from "@/db/db";
 import { ingredients } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth";
-import { assertProjectAccess } from "@/db/queries/auth";
+import { requireProjectRole } from "@/lib/auth";
+import { revalidateProject } from "@/lib/revalidate";
 import { parsePositiveNumber } from "@/lib/parse";
 
 // FormDataから材料の入力値をパース・バリデーションする共通処理
@@ -25,14 +24,13 @@ function parseIngredientInput(formData: FormData) {
 }
 
 export async function createIngredient(projectId: string, formData: FormData) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   const input = parseIngredientInput(formData);
 
   await db.insert(ingredients).values({ projectId, ...input });
 
-  revalidatePath(`/projects/${projectId}/ingredients`);
+  revalidateProject(projectId, "ingredients");
 }
 
 export async function updateIngredient(
@@ -40,8 +38,7 @@ export async function updateIngredient(
   projectId: string,
   formData: FormData
 ) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   const input = parseIngredientInput(formData);
 
@@ -50,16 +47,15 @@ export async function updateIngredient(
     .set({ ...input, updatedAt: new Date().toISOString() })
     .where(and(eq(ingredients.id, ingredientId), eq(ingredients.projectId, projectId)));
 
-  revalidatePath(`/projects/${projectId}/ingredients`);
+  revalidateProject(projectId, "ingredients");
 }
 
 export async function deleteIngredient(ingredientId: string, projectId: string) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   await db
     .delete(ingredients)
     .where(and(eq(ingredients.id, ingredientId), eq(ingredients.projectId, projectId)));
 
-  revalidatePath(`/projects/${projectId}/ingredients`);
+  revalidateProject(projectId, "ingredients");
 }

@@ -1,8 +1,6 @@
-import { notFound } from "next/navigation";
 import { CookingPot, Plus } from "lucide-react";
-import { requireAuth } from "@/lib/auth";
+import { requireProjectPage } from "@/lib/auth";
 import { getPrototypes } from "@/db/queries/prototypes";
-import { getMyRole } from "@/db/queries/projects";
 import { getRecipeNames } from "@/db/queries/recipes";
 import { PrototypeDialog } from "@/components/app/prototype-dialog";
 import { AppHeader } from "@/components/app/app-header";
@@ -17,16 +15,12 @@ export default async function PrototypesPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const userId = await requireAuth();
 
-  const [myRole, list, recipes] = await Promise.all([
-    getMyRole(id, userId),
+  const [{ canEdit }, list, recipes] = await Promise.all([
+    requireProjectPage(id),
     getPrototypes(id),
     getRecipeNames(id),
   ]);
-  if (!myRole) notFound();
-
-  const canEdit = myRole === "owner" || myRole === "editor";
 
   return (
     <>

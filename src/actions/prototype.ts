@@ -1,11 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { db } from "@/db/db";
 import { prototypeLogs, recipes } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth";
-import { assertProjectAccess } from "@/db/queries/auth";
+import { requireProjectRole } from "@/lib/auth";
+import { revalidateProject } from "@/lib/revalidate";
 import { assertRecipeInProject } from "@/db/queries/recipes";
 import { deletePrototypeImage } from "@/lib/r2";
 
@@ -46,8 +45,7 @@ async function assertPrototypeInProject(prototypeId: string, projectId: string) 
 }
 
 export async function createPrototype(projectId: string, formData: FormData) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   const input = parsePrototypeInput(formData);
   await assertRecipeInProject(input.recipeId, projectId);
@@ -57,7 +55,7 @@ export async function createPrototype(projectId: string, formData: FormData) {
     .values(input)
     .returning({ id: prototypeLogs.id });
 
-  revalidatePath(`/projects/${projectId}/prototypes`);
+  revalidateProject(projectId, "prototypes");
   return { prototypeId: log.id };
 }
 
@@ -66,8 +64,7 @@ export async function updatePrototype(
   projectId: string,
   formData: FormData
 ) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
   const existing = await assertPrototypeInProject(prototypeId, projectId);
 
   const input = parsePrototypeInput(formData);
@@ -83,12 +80,11 @@ export async function updatePrototype(
     await deletePrototypeImage(existing.imageUrl);
   }
 
-  revalidatePath(`/projects/${projectId}/prototypes`);
+  revalidateProject(projectId, "prototypes");
 }
 
 export async function deletePrototype(prototypeId: string, projectId: string) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
   const existing = await assertPrototypeInProject(prototypeId, projectId);
 
   await db
@@ -98,5 +94,5 @@ export async function deletePrototype(prototypeId: string, projectId: string) {
   // 紐づく写真もR2から掃除する
   await deletePrototypeImage(existing.imageUrl);
 
-  revalidatePath(`/projects/${projectId}/prototypes`);
+  revalidateProject(projectId, "prototypes");
 }

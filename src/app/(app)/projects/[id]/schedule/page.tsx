@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { Plus } from "lucide-react";
-import { requireAuth } from "@/lib/auth";
+import { requireProjectPage } from "@/lib/auth";
 import { getSchedules } from "@/db/queries/schedules";
-import { getProjectMeta, getMyRole } from "@/db/queries/projects";
+import { getProjectMeta } from "@/db/queries/projects";
 import { ScheduleDialog } from "@/components/app/schedule-dialog";
 import { ScheduleBoard } from "@/components/app/schedule-board";
 import { ScheduleMonthProvider, TodayButton } from "@/components/app/schedule-month";
@@ -15,16 +15,14 @@ export default async function SchedulePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const userId = await requireAuth();
 
-  const [myRole, list, project] = await Promise.all([
-    getMyRole(id, userId),
+  const [{ canEdit }, list, project] = await Promise.all([
+    requireProjectPage(id),
     getSchedules(id),
     getProjectMeta(id),
   ]);
-  if (!myRole || !project) notFound();
+  if (!project) notFound();
 
-  const canEdit   = myRole === "owner" || myRole === "editor";
   const eventDate = project.eventDate;
 
   return (

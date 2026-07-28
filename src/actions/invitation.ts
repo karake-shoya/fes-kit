@@ -5,8 +5,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db/db";
 import { projectInvitations, projectMembers } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { requireAuth, requireUser } from "@/lib/auth";
-import { assertProjectAccess } from "@/db/queries/auth";
+import { requireProjectRole, requireUser } from "@/lib/auth";
 import { getValidInvitation } from "@/db/queries/invitations";
 
 // 招待リンクの有効期限（72時間）
@@ -17,8 +16,7 @@ export async function createInvitation(
   projectId: string,
   role: "editor" | "viewer"
 ) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "owner");
+  const userId = await requireProjectRole(projectId, "owner");
 
   if (role !== "editor" && role !== "viewer") {
     throw new Error("不正なロールです");

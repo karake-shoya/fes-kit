@@ -1,8 +1,6 @@
-import { notFound } from "next/navigation";
 import { ShoppingBasket } from "lucide-react";
-import { requireAuth } from "@/lib/auth";
+import { requireProjectPage } from "@/lib/auth";
 import { getShoppingList } from "@/db/queries/shopping-list";
-import { getMyRole } from "@/db/queries/projects";
 import { AppHeader } from "@/components/app/app-header";
 import { formatYen } from "@/lib/format";
 import { round1 } from "@/lib/recipe-cost";
@@ -13,13 +11,11 @@ export default async function ShoppingListPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const userId = await requireAuth();
 
-  const [myRole, { items, totalCost }] = await Promise.all([
-    getMyRole(id, userId),
+  const [, { items, totalCost }] = await Promise.all([
+    requireProjectPage(id),
     getShoppingList(id),
   ]);
-  if (!myRole) notFound();
 
   return (
     <>

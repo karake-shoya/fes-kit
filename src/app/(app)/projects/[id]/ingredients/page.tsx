@@ -1,8 +1,6 @@
-import { notFound } from "next/navigation";
 import { ShoppingCart, Plus, ChevronRight } from "lucide-react";
-import { requireAuth } from "@/lib/auth";
+import { requireProjectPage } from "@/lib/auth";
 import { getIngredients } from "@/db/queries/ingredients";
-import { getMyRole } from "@/db/queries/projects";
 import { IngredientDialog } from "@/components/app/ingredient-dialog";
 import { AppHeader } from "@/components/app/app-header";
 import { Button } from "@/components/ui/button";
@@ -14,16 +12,12 @@ export default async function IngredientsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const userId = await requireAuth();
 
-  // role判定と材料取得は独立なので並列実行する
-  const [myRole, list] = await Promise.all([
-    getMyRole(id, userId),
+  // 権限判定と材料取得は独立なので並列実行する
+  const [{ canEdit }, list] = await Promise.all([
+    requireProjectPage(id),
     getIngredients(id),
   ]);
-  if (!myRole) notFound();
-
-  const canEdit = myRole === "owner" || myRole === "editor";
 
   return (
     <>

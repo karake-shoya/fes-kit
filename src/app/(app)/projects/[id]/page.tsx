@@ -11,9 +11,8 @@ import {
   ListTodo,
   ClipboardList,
 } from "lucide-react";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, projectAccessOf } from "@/lib/auth";
 import { getProject } from "@/db/queries/projects";
-import { assertProjectAccess } from "@/db/queries/auth";
 import { getProjectStats, getUpcomingSchedules } from "@/db/queries/stats";
 import { getRecipes } from "@/db/queries/recipes";
 import { getShoppingListItemCount } from "@/db/queries/shopping-list";
@@ -41,10 +40,13 @@ export default async function ProjectPage({
     getShoppingListItemCount(id),
     getSalesRecordCount(id),
     getChecklistStats(id),
-    assertProjectAccess(id, userId).catch(() => notFound()),
   ]);
 
   if (!project) notFound();
+
+  // メンバー一覧付きで取得済みなので、アクセス権はそこから判定する
+  // （メンバーシップを別クエリで引き直さない）
+  projectAccessOf(userId, project.members.find((m) => m.userId === userId)?.role);
 
   // 赤字レシピ数（材料登録済みで利益率がマイナスのもの）
   const lossCount = recipeList.filter(

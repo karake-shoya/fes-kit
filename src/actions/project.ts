@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import { db } from "@/db/db";
 import { projects, projectMembers } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { requireAuth, requireUser } from "@/lib/auth";
-import { assertProjectAccess } from "@/db/queries/auth";
+import { requireProjectRole, requireUser } from "@/lib/auth";
+import { revalidateProject } from "@/lib/revalidate";
 
 export async function createProject(formData: FormData) {
   // requireUser() でWebhook未着時もDBにユーザーをUPSERTしてからFK制約を通す
@@ -36,8 +36,7 @@ export async function createProject(formData: FormData) {
 }
 
 export async function updateProject(projectId: string, formData: FormData) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   const name        = (formData.get("name") as string | null)?.trim();
   const description = (formData.get("description") as string | null)?.trim() || null;
@@ -50,13 +49,11 @@ export async function updateProject(projectId: string, formData: FormData) {
     .set({ name, description, eventDate, updatedAt: new Date().toISOString() })
     .where(eq(projects.id, projectId));
 
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath(`/projects/${projectId}/settings`);
+  revalidateProject(projectId, "project");
 }
 
 export async function deleteProject(projectId: string) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "owner");
+  await requireProjectRole(projectId, "owner");
 
   await db.delete(projects).where(eq(projects.id, projectId));
 

@@ -1,11 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { db } from "@/db/db";
 import { checklistItems } from "@/db/schema";
 import { and, eq, isNotNull } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth";
-import { assertProjectAccess } from "@/db/queries/auth";
+import { requireProjectRole } from "@/lib/auth";
+import { revalidateProject } from "@/lib/revalidate";
 import { getShoppingList } from "@/db/queries/shopping-list";
 import { CATEGORY_ORDER, type ChecklistCategory } from "@/lib/checklist";
 import { round1 } from "@/lib/recipe-cost";
@@ -26,14 +25,13 @@ function parseChecklistInput(formData: FormData) {
 }
 
 export async function createChecklistItem(projectId: string, formData: FormData) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   const input = parseChecklistInput(formData);
 
   await db.insert(checklistItems).values({ projectId, ...input });
 
-  revalidatePath(`/projects/${projectId}/checklist`);
+  revalidateProject(projectId, "checklist");
 }
 
 export async function updateChecklistItem(
@@ -41,8 +39,7 @@ export async function updateChecklistItem(
   projectId: string,
   formData: FormData
 ) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   const input = parseChecklistInput(formData);
 
@@ -51,24 +48,22 @@ export async function updateChecklistItem(
     .set({ ...input, updatedAt: new Date().toISOString() })
     .where(and(eq(checklistItems.id, itemId), eq(checklistItems.projectId, projectId)));
 
-  revalidatePath(`/projects/${projectId}/checklist`);
+  revalidateProject(projectId, "checklist");
 }
 
 export async function deleteChecklistItem(itemId: string, projectId: string) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   await db
     .delete(checklistItems)
     .where(and(eq(checklistItems.id, itemId), eq(checklistItems.projectId, projectId)));
 
-  revalidatePath(`/projects/${projectId}/checklist`);
+  revalidateProject(projectId, "checklist");
 }
 
 // チェック状態をワンタップで反転させる
 export async function toggleChecklistItem(itemId: string, projectId: string) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   const [current] = await db
     .select({ checked: checklistItems.checked })
@@ -82,7 +77,7 @@ export async function toggleChecklistItem(itemId: string, projectId: string) {
     .set({ checked: !current.checked, updatedAt: new Date().toISOString() })
     .where(and(eq(checklistItems.id, itemId), eq(checklistItems.projectId, projectId)));
 
-  revalidatePath(`/projects/${projectId}/checklist`);
+  revalidateProject(projectId, "checklist");
 }
 
 // 買い出しリストの材料を持ち物リストへ一括インポートする。
@@ -92,8 +87,7 @@ export async function toggleChecklistItem(itemId: string, projectId: string) {
 export async function importFromShoppingList(
   projectId: string
 ): Promise<{ imported: number }> {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   const [{ items }, imported] = await Promise.all([
     getShoppingList(projectId),
@@ -116,7 +110,7 @@ export async function importFromShoppingList(
 
   if (toInsert.length > 0) {
     await db.insert(checklistItems).values(toInsert);
-    revalidatePath(`/projects/${projectId}/checklist`);
+    revalidateProject(projectId, "checklist");
   }
 
   return { imported: toInsert.length };

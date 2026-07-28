@@ -3,8 +3,7 @@
 import { generateObject } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { z } from "zod";
-import { requireAuth } from "@/lib/auth";
-import { assertProjectAccess } from "@/db/queries/auth";
+import { requireProjectRole } from "@/lib/auth";
 import { getRecipeWithCost } from "@/db/queries/recipes";
 import { getProjectContext } from "@/db/queries/projects";
 import { formatYen } from "@/lib/format";
@@ -33,8 +32,7 @@ export async function suggestSellingPrice(
   recipeId: string,
   projectId: string
 ): Promise<PriceSuggestion> {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error("AI機能が未設定です（ANTHROPIC_API_KEY）");

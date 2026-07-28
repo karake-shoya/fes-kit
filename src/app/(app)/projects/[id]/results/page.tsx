@@ -1,8 +1,6 @@
-import { notFound } from "next/navigation";
 import { Store } from "lucide-react";
-import { requireAuth } from "@/lib/auth";
+import { requireProjectPage } from "@/lib/auth";
 import { getSalesResults } from "@/db/queries/sales-records";
-import { getMyRole } from "@/db/queries/projects";
 import { AppHeader } from "@/components/app/app-header";
 import { SalesRecordCard } from "@/components/app/sales-record-card";
 import { formatYen } from "@/lib/format";
@@ -13,15 +11,12 @@ export default async function ResultsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const userId = await requireAuth();
 
-  const [myRole, { items, totalExpected, totalActual }] = await Promise.all([
-    getMyRole(id, userId),
+  const [{ canEdit }, { items, totalExpected, totalActual }] = await Promise.all([
+    requireProjectPage(id),
     getSalesResults(id),
   ]);
-  if (!myRole) notFound();
 
-  const canEdit = myRole === "owner" || myRole === "editor";
   // 1件でも実績が入っていれば「実績合計」を意味のある数字として見せる
   const hasRecords = items.some((it) => it.recorded);
 

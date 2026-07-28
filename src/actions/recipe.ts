@@ -1,11 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { db } from "@/db/db";
 import { recipes, recipeIngredients, ingredients } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth";
-import { assertProjectAccess } from "@/db/queries/auth";
+import { requireProjectRole } from "@/lib/auth";
+import { revalidateProject } from "@/lib/revalidate";
 import { assertRecipeInProject } from "@/db/queries/recipes";
 import { parsePositiveNumber, parsePositiveInt } from "@/lib/parse";
 
@@ -34,8 +33,7 @@ async function assertIngredientInProject(ingredientId: string, projectId: string
 }
 
 export async function createRecipe(projectId: string, formData: FormData) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   const input = parseRecipeInput(formData);
 
@@ -44,9 +42,7 @@ export async function createRecipe(projectId: string, formData: FormData) {
     .values({ projectId, ...input })
     .returning();
 
-  revalidatePath(`/projects/${projectId}/recipes`);
-  revalidatePath(`/projects/${projectId}/results`);
-  revalidatePath(`/projects/${projectId}`); // ホームのバッジ（記録 X/Y品 の分母）
+  revalidateProject(projectId, "recipes", { recipeId: recipe.id });
   return { recipeId: recipe.id };
 }
 
@@ -55,8 +51,7 @@ export async function updateRecipe(
   projectId: string,
   formData: FormData
 ) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   const input = parseRecipeInput(formData);
 
@@ -65,22 +60,17 @@ export async function updateRecipe(
     .set({ ...input, updatedAt: new Date().toISOString() })
     .where(and(eq(recipes.id, recipeId), eq(recipes.projectId, projectId)));
 
-  revalidatePath(`/projects/${projectId}/recipes`);
-  revalidatePath(`/projects/${projectId}/recipes/${recipeId}`);
-  revalidatePath(`/projects/${projectId}/results`);
+  revalidateProject(projectId, "recipes", { recipeId });
 }
 
 export async function deleteRecipe(recipeId: string, projectId: string) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   await db
     .delete(recipes)
     .where(and(eq(recipes.id, recipeId), eq(recipes.projectId, projectId)));
 
-  revalidatePath(`/projects/${projectId}/recipes`);
-  revalidatePath(`/projects/${projectId}/results`);
-  revalidatePath(`/projects/${projectId}`); // ホームのバッジ（記録 X/Y品 の分母）
+  revalidateProject(projectId, "recipes", { recipeId });
 }
 
 // 販売価格のみを更新する軽量アクション（スライダーのドラッグ確定時に呼ぶ）
@@ -90,8 +80,7 @@ export async function setRecipeSellingPrice(
   projectId: string,
   sellingPriceRaw: string | number
 ) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
   await assertRecipeInProject(recipeId, projectId);
 
   const sellingPrice = parsePositiveNumber(String(sellingPriceRaw), "販売価格");
@@ -101,9 +90,7 @@ export async function setRecipeSellingPrice(
     .set({ sellingPrice, updatedAt: new Date().toISOString() })
     .where(and(eq(recipes.id, recipeId), eq(recipes.projectId, projectId)));
 
-  revalidatePath(`/projects/${projectId}/recipes`);
-  revalidatePath(`/projects/${projectId}/recipes/${recipeId}`);
-  revalidatePath(`/projects/${projectId}/results`);
+  revalidateProject(projectId, "recipes", { recipeId });
 }
 
 // 作る予定数のみを更新する軽量アクション（詳細ページのインライン編集用）
@@ -113,8 +100,7 @@ export async function setRecipeServings(
   projectId: string,
   servingsRaw: string | number
 ) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
   await assertRecipeInProject(recipeId, projectId);
 
   const servings = parsePositiveInt(String(servingsRaw), "作る予定数", 1);
@@ -124,11 +110,7 @@ export async function setRecipeServings(
     .set({ servings, updatedAt: new Date().toISOString() })
     .where(and(eq(recipes.id, recipeId), eq(recipes.projectId, projectId)));
 
-  revalidatePath(`/projects/${projectId}/recipes`);
-  revalidatePath(`/projects/${projectId}/recipes/${recipeId}`);
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath(`/projects/${projectId}/shopping-list`);
-  revalidatePath(`/projects/${projectId}/results`);
+  revalidateProject(projectId, "recipes", { recipeId });
 }
 
 // レシピに材料を追加、または使用量を更新する（upsert）
@@ -138,8 +120,7 @@ export async function setRecipeIngredient(
   ingredientId: string,
   quantityUsedRaw: string
 ) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   // recipe / ingredient がともにこのプロジェクトのものか照合（越境防止）
   await assertRecipeInProject(recipeId, projectId);
@@ -155,10 +136,7 @@ export async function setRecipeIngredient(
       set: { quantityUsed },
     });
 
-  revalidatePath(`/projects/${projectId}/recipes`);
-  revalidatePath(`/projects/${projectId}/recipes/${recipeId}`);
-  revalidatePath(`/projects/${projectId}/shopping-list`);
-  revalidatePath(`/projects/${projectId}/results`);
+  revalidateProject(projectId, "recipes", { recipeId });
 }
 
 // レシピから材料を外す
@@ -167,8 +145,7 @@ export async function removeRecipeIngredient(
   projectId: string,
   ingredientId: string
 ) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
 
   // recipe がこのプロジェクトのものか照合（越境防止）
   await assertRecipeInProject(recipeId, projectId);
@@ -182,8 +159,5 @@ export async function removeRecipeIngredient(
       )
     );
 
-  revalidatePath(`/projects/${projectId}/recipes`);
-  revalidatePath(`/projects/${projectId}/recipes/${recipeId}`);
-  revalidatePath(`/projects/${projectId}/shopping-list`);
-  revalidatePath(`/projects/${projectId}/results`);
+  revalidateProject(projectId, "recipes", { recipeId });
 }

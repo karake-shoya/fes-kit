@@ -1,8 +1,6 @@
-import { notFound } from "next/navigation";
 import { Plus } from "lucide-react";
-import { requireAuth } from "@/lib/auth";
+import { requireProjectPage } from "@/lib/auth";
 import { getChecklistItems } from "@/db/queries/checklist";
-import { getMyRole } from "@/db/queries/projects";
 import { ChecklistDialog } from "@/components/app/checklist-dialog";
 import { ChecklistBoard } from "@/components/app/checklist-board";
 import { AppHeader } from "@/components/app/app-header";
@@ -14,15 +12,11 @@ export default async function ChecklistPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const userId = await requireAuth();
 
-  const [myRole, items] = await Promise.all([
-    getMyRole(id, userId),
+  const [{ canEdit }, items] = await Promise.all([
+    requireProjectPage(id),
     getChecklistItems(id),
   ]);
-  if (!myRole) notFound();
-
-  const canEdit = myRole === "owner" || myRole === "editor";
 
   return (
     <>
