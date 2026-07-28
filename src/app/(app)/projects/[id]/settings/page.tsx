@@ -5,6 +5,7 @@ import { ProjectSettingsForm } from "@/components/app/project-settings-form";
 import { DeleteProjectButton } from "@/components/app/delete-project-button";
 import { InviteSection } from "@/components/app/invite-section";
 import { AppHeader } from "@/components/app/app-header";
+import { PageMain } from "@/components/app/page-shell";
 import { MemberAvatar } from "@/components/app/member-avatar";
 import { ROLE_LABEL, PILL_CLASS } from "@/lib/format";
 
@@ -28,7 +29,7 @@ export default async function ProjectSettingsPage({
     <>
       <AppHeader title="プロジェクト設定" backHref={`/projects/${id}`} />
 
-      <main className="px-4 py-6 flex flex-col gap-6 max-w-lg mx-auto">
+      <PageMain gap={6}>
         {/* プロジェクト情報編集 */}
         <section className="bg-card rounded-2xl border border-border px-4 py-4 flex flex-col gap-4">
           <h2 className="font-semibold text-foreground">基本情報</h2>
@@ -70,7 +71,7 @@ export default async function ProjectSettingsPage({
             <DeleteProjectButton projectId={id} />
           </section>
         )}
-      </main>
+      </PageMain>
     </>
   );
 }

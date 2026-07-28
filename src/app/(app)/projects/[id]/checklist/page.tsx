@@ -4,6 +4,7 @@ import { getChecklistItems } from "@/db/queries/checklist";
 import { ChecklistDialog } from "@/components/app/checklist-dialog";
 import { ChecklistBoard } from "@/components/app/checklist-board";
 import { AppHeader } from "@/components/app/app-header";
+import { PageMain } from "@/components/app/page-shell";
 import { Button } from "@/components/ui/button";
 
 export default async function ChecklistPage({
@@ -34,9 +35,9 @@ export default async function ChecklistPage({
         }
       />
 
-      <main className="px-4 py-6 flex flex-col gap-4 max-w-lg mx-auto">
+      <PageMain gap={4}>
         <ChecklistBoard projectId={id} canEdit={canEdit} items={items} />
-      </main>
+      </PageMain>
     </>
   );
 }

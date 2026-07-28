@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { getMyProjects } from "@/db/queries/projects";
 import { CreateProjectDialog } from "@/components/app/create-project-dialog";
 import { AppHeader } from "@/components/app/app-header";
+import { PageMain } from "@/components/app/page-shell";
 import { ProjectCard, type ProjectRow } from "@/components/app/project-card";
 import { ChangelogSection } from "@/components/app/changelog-section";
 import { todayYmd } from "@/lib/format";
@@ -33,7 +34,7 @@ export default async function DashboardPage() {
     <>
       <AppHeader title="FesKit" />
 
-      <main className="px-4 py-6 flex flex-col gap-6 max-w-lg mx-auto">
+      <PageMain gap={6}>
         <CreateProjectDialog />
 
         {allProjects.length === 0 ? (
@@ -89,7 +90,7 @@ export default async function DashboardPage() {
         )}
 
         <ChangelogSection />
-      </main>
+      </PageMain>
     </>
   );
 }

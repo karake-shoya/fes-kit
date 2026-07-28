@@ -2,6 +2,7 @@ import { ShoppingBasket } from "lucide-react";
 import { requireProjectPage } from "@/lib/auth";
 import { getShoppingList } from "@/db/queries/shopping-list";
 import { AppHeader } from "@/components/app/app-header";
+import { PageMain, EmptyState } from "@/components/app/page-shell";
 import { formatYen } from "@/lib/format";
 import { round1 } from "@/lib/recipe-cost";
 
@@ -21,15 +22,12 @@ export default async function ShoppingListPage({
     <>
       <AppHeader title="買い出しリスト" backHref={`/projects/${id}`} />
 
-      <main className="px-4 py-6 flex flex-col gap-4 max-w-lg mx-auto">
+      <PageMain gap={4}>
         {items.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <ShoppingBasket className="w-12 h-12 text-muted-foreground/40" />
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              レシピに材料の使用量を登録すると、<br />
-              必要な買い出し量がここに表示されます。
-            </p>
-          </div>
+          <EmptyState icon={ShoppingBasket}>
+            レシピに材料の使用量を登録すると、<br />
+            必要な買い出し量がここに表示されます。
+          </EmptyState>
         ) : (
           <>
             <section className="rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-card to-card px-4 py-4 flex items-center justify-between shadow-sm">
@@ -61,7 +59,7 @@ export default async function ShoppingListPage({
             </ul>
           </>
         )}
-      </main>
+      </PageMain>
     </>
   );
 }

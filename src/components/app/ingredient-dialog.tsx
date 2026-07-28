@@ -1,15 +1,5 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +8,8 @@ import {
   updateIngredient,
   deleteIngredient,
 } from "@/actions/ingredient";
-import { DeleteConfirmInline } from "@/components/app/delete-confirm-inline";
+import { EntityFormDialog } from "@/components/app/entity-form-dialog";
+import { useEntityDialog } from "@/lib/use-entity-dialog";
 import type { Ingredient } from "@/db/schema";
 
 // 単位入力の候補（datalist）
@@ -34,190 +25,115 @@ type Props = {
 
 export function IngredientDialog({ projectId, ingredient, children }: Props) {
   const isEdit = Boolean(ingredient);
-  const [open, setOpen]              = useState(false);
-  const [error, setError]            = useState<string | null>(null);
-  // 削除は誤タップ防止のため2段階（ボタン → 確認）にする
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [isPending, startTransition] = useTransition();
-  const formRef = useRef<HTMLFormElement>(null);
-  const router  = useRouter();
-
-  // ダイアログを閉じたら確認状態・エラーをリセット
-  function handleOpenChange(next: boolean) {
-    setOpen(next);
-    if (!next) {
-      setConfirmDelete(false);
-      setError(null);
-    }
-  }
-
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-    const formData = new FormData(e.currentTarget);
-
-    startTransition(async () => {
-      try {
-        if (isEdit && ingredient) {
-          await updateIngredient(ingredient.id, projectId, formData);
-        } else {
-          await createIngredient(projectId, formData);
-          formRef.current?.reset();
-        }
-        setOpen(false);
-        router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "エラーが発生しました");
-      }
-    });
-  }
-
-  function handleDelete() {
-    if (!ingredient) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        await deleteIngredient(ingredient.id, projectId);
-        setOpen(false);
-        router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "エラーが発生しました");
-      }
-    });
-  }
+  const dialog = useEntityDialog();
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent
-        className="w-[92vw] max-w-md rounded-2xl"
-        // 編集時は開いた瞬間にキーボードが立ち上がらないよう自動フォーカスを無効化
-        onOpenAutoFocus={(e) => {
-          if (isEdit) e.preventDefault();
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">
-            {isEdit ? "材料を編集" : "材料を追加"}
-          </DialogTitle>
-        </DialogHeader>
-        <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="name">材料名 <span className="text-red-500">*</span></Label>
-            <Input
-              id="name"
-              name="name"
-              placeholder="例：キャベツ"
-              defaultValue={ingredient?.name ?? ""}
-              required
-              // 追加モードのみ自動フォーカス（編集モードはキーボードを出さない）
-              autoFocus={!isEdit}
-            />
-          </div>
+    <EntityFormDialog
+      dialog={dialog}
+      isEdit={isEdit}
+      title={isEdit ? "材料を編集" : "材料を追加"}
+      trigger={children}
+      onSubmit={async (formData) => {
+        if (ingredient) {
+          await updateIngredient(ingredient.id, projectId, formData);
+          return;
+        }
+        await createIngredient(projectId, formData);
+        return { resetForm: true };
+      }}
+      onDelete={
+        ingredient && {
+          label: "この材料を削除",
+          confirmWith: "inline",
+          message: <>この材料を削除しますか？<br />この材料を使っているレシピの構成からも取り除かれます。</>,
+          run: () => deleteIngredient(ingredient.id, projectId),
+        }
+      }
+    >
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="name">材料名 <span className="text-red-500">*</span></Label>
+        <Input
+          id="name"
+          name="name"
+          placeholder="例：キャベツ"
+          defaultValue={ingredient?.name ?? ""}
+          required
+          // 追加モードのみ自動フォーカス（編集モードはキーボードを出さない）
+          autoFocus={!isEdit}
+        />
+      </div>
 
-          <div className="flex gap-3">
-            <div className="flex flex-col gap-1.5 flex-1">
-              <Label htmlFor="price">単価（円） <span className="text-red-500">*</span></Label>
-              <Input
-                id="price"
-                name="price"
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0.01"
-                placeholder="198"
-                defaultValue={ingredient?.price ?? ""}
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-1.5 flex-1">
-              <Label htmlFor="quantity">購入数量 <span className="text-red-500">*</span></Label>
-              <Input
-                id="quantity"
-                name="quantity"
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0.01"
-                placeholder="1000"
-                defaultValue={ingredient?.quantity ?? ""}
-                required
-              />
-            </div>
-          </div>
+      <div className="flex gap-3">
+        <div className="flex flex-col gap-1.5 flex-1">
+          <Label htmlFor="price">単価（円） <span className="text-red-500">*</span></Label>
+          <Input
+            id="price"
+            name="price"
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            min="0.01"
+            placeholder="198"
+            defaultValue={ingredient?.price ?? ""}
+            required
+          />
+        </div>
+        <div className="flex flex-col gap-1.5 flex-1">
+          <Label htmlFor="quantity">購入数量 <span className="text-red-500">*</span></Label>
+          <Input
+            id="quantity"
+            name="quantity"
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            min="0.01"
+            placeholder="1000"
+            defaultValue={ingredient?.quantity ?? ""}
+            required
+          />
+        </div>
+      </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="unit">単位 <span className="text-red-500">*</span></Label>
-            <Input
-              id="unit"
-              name="unit"
-              list="unit-options"
-              placeholder="g / 袋 / 個 など"
-              defaultValue={ingredient?.unit ?? ""}
-              required
-            />
-            <datalist id="unit-options">
-              {UNIT_OPTIONS.map((u) => (
-                <option key={u} value={u} />
-              ))}
-            </datalist>
-            <p className="text-xs text-muted-foreground/70">
-              「1000g入りを198円で買った」なら 単価=198 / 数量=1000 / 単位=g
-            </p>
-          </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="unit">単位 <span className="text-red-500">*</span></Label>
+        <Input
+          id="unit"
+          name="unit"
+          list="unit-options"
+          placeholder="g / 袋 / 個 など"
+          defaultValue={ingredient?.unit ?? ""}
+          required
+        />
+        <datalist id="unit-options">
+          {UNIT_OPTIONS.map((u) => (
+            <option key={u} value={u} />
+          ))}
+        </datalist>
+        <p className="text-xs text-muted-foreground/70">
+          「1000g入りを198円で買った」なら 単価=198 / 数量=1000 / 単位=g
+        </p>
+      </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="supplier">仕入れ先</Label>
-            <Input
-              id="supplier"
-              name="supplier"
-              placeholder="例：業務スーパー"
-              defaultValue={ingredient?.supplier ?? ""}
-            />
-          </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="supplier">仕入れ先</Label>
+        <Input
+          id="supplier"
+          name="supplier"
+          placeholder="例：業務スーパー"
+          defaultValue={ingredient?.supplier ?? ""}
+        />
+      </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="memo">メモ</Label>
-            <Textarea
-              id="memo"
-              name="memo"
-              placeholder="特売日や代替品など"
-              rows={2}
-              defaultValue={ingredient?.memo ?? ""}
-            />
-          </div>
-
-          {error && <p className="text-sm text-red-500">{error}</p>}
-
-          <Button
-            type="submit"
-            disabled={isPending}
-          >
-            {isPending ? "保存中…" : isEdit ? "変更を保存" : "追加する"}
-          </Button>
-
-          {isEdit && !confirmDelete && (
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={isPending}
-              onClick={() => setConfirmDelete(true)}
-              className="text-red-500 hover:text-red-600 hover:bg-red-50"
-            >
-              この材料を削除
-            </Button>
-          )}
-
-          {isEdit && confirmDelete && (
-            <DeleteConfirmInline
-              message={<>この材料を削除しますか？<br />この材料を使っているレシピの構成からも取り除かれます。</>}
-              isPending={isPending}
-              onCancel={() => setConfirmDelete(false)}
-              onConfirm={handleDelete}
-            />
-          )}
-        </form>
-      </DialogContent>
-    </Dialog>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="memo">メモ</Label>
+        <Textarea
+          id="memo"
+          name="memo"
+          placeholder="特売日や代替品など"
+          rows={2}
+          defaultValue={ingredient?.memo ?? ""}
+        />
+      </div>
+    </EntityFormDialog>
   );
 }

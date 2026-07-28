@@ -4,6 +4,7 @@ import { requireProjectPage } from "@/lib/auth";
 import { getRecipes } from "@/db/queries/recipes";
 import { RecipeDialog } from "@/components/app/recipe-dialog";
 import { AppHeader } from "@/components/app/app-header";
+import { PageMain, EmptyState } from "@/components/app/page-shell";
 import { Button } from "@/components/ui/button";
 import { formatYen, profitStyle } from "@/lib/format";
 
@@ -36,17 +37,14 @@ export default async function RecipesPage({
         }
       />
 
-      <main className="px-4 py-6 flex flex-col gap-3 max-w-lg mx-auto">
+      <PageMain>
         {list.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <ClipboardList className="w-12 h-12 text-muted-foreground/40" />
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              まだ商品がありません。<br />
-              {canEdit
-                ? "「追加」ボタンで商品を登録しましょう！"
-                : "編集者が商品を登録するとここに表示されます。"}
-            </p>
-          </div>
+          <EmptyState icon={ClipboardList}>
+            まだ商品がありません。<br />
+            {canEdit
+              ? "「追加」ボタンで商品を登録しましょう！"
+              : "編集者が商品を登録するとここに表示されます。"}
+          </EmptyState>
         ) : (
           <ul className="flex flex-col gap-3">
             {list.map(({ recipe, cost, ingredientCount }) => {
@@ -88,7 +86,7 @@ export default async function RecipesPage({
             })}
           </ul>
         )}
-      </main>
+      </PageMain>
     </>
   );
 }

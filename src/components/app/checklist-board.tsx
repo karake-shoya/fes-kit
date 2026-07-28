@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardList, ShoppingBasket } from "lucide-react";
 import { ChecklistItemCard } from "@/components/app/checklist-item-card";
+import { EmptyState } from "@/components/app/page-shell";
 import { importFromShoppingList } from "@/actions/checklist";
 import { CATEGORY_STYLE, groupChecklistItemsByCategory, type ChecklistCategory } from "@/lib/checklist";
 import type { ChecklistItem } from "@/db/schema";
@@ -52,15 +53,12 @@ export function ChecklistBoard({ projectId, canEdit, items }: Props) {
       )}
 
       {groups.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <ClipboardList className="w-12 h-12 text-muted-foreground/40" />
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            まだ持ち物がありません。<br />
-            {canEdit
-              ? "「追加」ボタンや「買い出しリストから追加」で登録しましょう！"
-              : "編集者が持ち物を登録するとここに表示されます。"}
-          </p>
-        </div>
+        <EmptyState icon={ClipboardList}>
+          まだ持ち物がありません。<br />
+          {canEdit
+            ? "「追加」ボタンや「買い出しリストから追加」で登録しましょう！"
+            : "編集者が持ち物を登録するとここに表示されます。"}
+        </EmptyState>
       ) : (
         <CategoryGroups groups={groups} projectId={projectId} canEdit={canEdit} />
       )}

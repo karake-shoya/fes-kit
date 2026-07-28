@@ -2,6 +2,7 @@ import { Store } from "lucide-react";
 import { requireProjectPage } from "@/lib/auth";
 import { getSalesResults } from "@/db/queries/sales-records";
 import { AppHeader } from "@/components/app/app-header";
+import { PageMain, EmptyState } from "@/components/app/page-shell";
 import { SalesRecordCard } from "@/components/app/sales-record-card";
 import { formatYen } from "@/lib/format";
 
@@ -24,16 +25,13 @@ export default async function ResultsPage({
     <>
       <AppHeader title="売上・実績記録" backHref={`/projects/${id}`} />
 
-      <main className="px-4 py-6 flex flex-col gap-4 max-w-lg mx-auto">
+      <PageMain gap={4}>
         {items.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <Store className="w-12 h-12 text-muted-foreground/40" />
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              レシピを登録すると、当日の
-              <br />
-              「作った数」「売れた数」をここで記録できます。
-            </p>
-          </div>
+          <EmptyState icon={Store}>
+            レシピを登録すると、当日の
+            <br />
+            「作った数」「売れた数」をここで記録できます。
+          </EmptyState>
         ) : (
           <>
             {/* 見込み vs 実績のサマリーヒーロー */}
@@ -71,7 +69,7 @@ export default async function ResultsPage({
             </ul>
           </>
         )}
-      </main>
+      </PageMain>
     </>
   );
 }

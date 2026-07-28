@@ -4,6 +4,7 @@ import { getPrototypes } from "@/db/queries/prototypes";
 import { getRecipeNames } from "@/db/queries/recipes";
 import { PrototypeDialog } from "@/components/app/prototype-dialog";
 import { AppHeader } from "@/components/app/app-header";
+import { PageMain, EmptyState } from "@/components/app/page-shell";
 import { Button } from "@/components/ui/button";
 import { RESULT_LABEL } from "@/lib/prototype";
 import { formatDate } from "@/lib/format";
@@ -38,17 +39,14 @@ export default async function PrototypesPage({
         }
       />
 
-      <main className="px-4 py-6 flex flex-col gap-3 max-w-lg mx-auto">
+      <PageMain>
         {list.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <CookingPot className="w-12 h-12 text-muted-foreground/40" />
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              まだ試作記録がありません。<br />
-              {canEdit
-                ? "「追加」ボタンで試作の感想を記録しましょう！"
-                : "編集者が試作記録を追加するとここに表示されます。"}
-            </p>
-          </div>
+          <EmptyState icon={CookingPot}>
+            まだ試作記録がありません。<br />
+            {canEdit
+              ? "「追加」ボタンで試作の感想を記録しましょう！"
+              : "編集者が試作記録を追加するとここに表示されます。"}
+          </EmptyState>
         ) : (
           <ul className="flex flex-col gap-3">
             {list.map((p) => (
@@ -56,7 +54,7 @@ export default async function PrototypesPage({
             ))}
           </ul>
         )}
-      </main>
+      </PageMain>
     </>
   );
 }

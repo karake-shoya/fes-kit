@@ -3,6 +3,7 @@ import { requireProjectPage } from "@/lib/auth";
 import { getIngredients } from "@/db/queries/ingredients";
 import { IngredientDialog } from "@/components/app/ingredient-dialog";
 import { AppHeader } from "@/components/app/app-header";
+import { PageMain, EmptyState } from "@/components/app/page-shell";
 import { Button } from "@/components/ui/button";
 import { formatYen } from "@/lib/format";
 
@@ -35,17 +36,14 @@ export default async function IngredientsPage({
         }
       />
 
-      <main className="px-4 py-6 flex flex-col gap-3 max-w-lg mx-auto">
+      <PageMain>
         {list.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <ShoppingCart className="w-12 h-12 text-muted-foreground/40" />
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              まだ材料がありません。<br />
-              {canEdit
-                ? "「追加」ボタンから食材を登録しましょう！"
-                : "編集者が材料を登録するとここに表示されます。"}
-            </p>
-          </div>
+          <EmptyState icon={ShoppingCart}>
+            まだ材料がありません。<br />
+            {canEdit
+              ? "「追加」ボタンから食材を登録しましょう！"
+              : "編集者が材料を登録するとここに表示されます。"}
+          </EmptyState>
         ) : (
           <ul className="flex flex-col gap-3">
             {list.map((ing) => {
@@ -82,7 +80,7 @@ export default async function IngredientsPage({
             })}
           </ul>
         )}
-      </main>
+      </PageMain>
     </>
   );
 }

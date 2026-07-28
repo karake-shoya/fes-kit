@@ -19,6 +19,7 @@ import { getShoppingListItemCount } from "@/db/queries/shopping-list";
 import { getSalesRecordCount } from "@/db/queries/sales-records";
 import { getChecklistStats } from "@/db/queries/checklist";
 import { AppHeader } from "@/components/app/app-header";
+import { PageMain } from "@/components/app/page-shell";
 import { MemberAvatar, AVATAR_FALLBACK_CLASS } from "@/components/app/member-avatar";
 import { formatDate, todayYmd, daysUntil } from "@/lib/format";
 import { formatDateRange, STATUS_STYLE } from "@/lib/schedule";
@@ -77,7 +78,7 @@ export default async function ProjectPage({
         }
       />
 
-      <main className="px-4 py-6 flex flex-col gap-4 max-w-lg mx-auto">
+      <PageMain gap={4}>
         {/* メンバー（タップで設定ページへ） */}
         <Link
           href={`/projects/${id}/settings`}
@@ -182,7 +183,7 @@ export default async function ProjectPage({
             </li>
           ))}
         </ul>
-      </main>
+      </PageMain>
     </>
   );
 }

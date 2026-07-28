@@ -6,6 +6,7 @@ import { getIngredients } from "@/db/queries/ingredients";
 import { RecipeDialog } from "@/components/app/recipe-dialog";
 import { RecipeProfitPanel } from "@/components/app/recipe-profit-panel";
 import { AppHeader } from "@/components/app/app-header";
+import { PageMain } from "@/components/app/page-shell";
 
 export default async function RecipeDetailPage({
   params,
@@ -44,7 +45,7 @@ export default async function RecipeDetailPage({
         }
       />
 
-      <main className="px-4 py-6 flex flex-col gap-4 max-w-lg mx-auto">
+      <PageMain gap={4}>
         <RecipeProfitPanel
           recipe={{ id: recipe.id, sellingPrice: recipe.sellingPrice, servings: recipe.servings }}
           projectId={id}
@@ -59,7 +60,7 @@ export default async function RecipeDetailPage({
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{recipe.memo}</p>
           </section>
         )}
-      </main>
+      </PageMain>
     </>
   );
 }
