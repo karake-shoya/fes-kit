@@ -45,7 +45,16 @@ export function useEntityDialog(options?: {
     return err instanceof Error ? err.message : "エラーが発生しました";
   }
 
-  /** フォーム送信をラップする。成功なら閉じて再取得、失敗ならエラーを表示する */
+  /**
+   * フォーム送信をラップする。成功なら閉じて再取得、失敗ならエラーを表示する。
+   *
+   * 成功時は handleOpenChange を通さず setOpen(false) で閉じるため、**onClose は呼ばれない**。
+   * onClose の役目は「保存していない入力を捨てる」ことなので、保存できた値まで
+   * 巻き戻すと逆に困るため（編集ダイアログなら、再取得がまだ届いていない
+   * 古い props へ state を戻してしまう）。
+   * 追加モードで次の1件に備えて state を空にしたい場合は、呼び出し側が
+   * onSubmit の中で明示的にリセットする（scenario-dialog / prototype-dialog がその形）。
+   */
   function submit(
     e: React.FormEvent<HTMLFormElement>,
     run: (formData: FormData) => Promise<SubmitResult>

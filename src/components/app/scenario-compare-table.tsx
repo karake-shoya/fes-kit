@@ -59,8 +59,12 @@ export function ScenarioCompareTable({
     purchaseRate: calcPurchaseRate(col.result.totalQuantity, expectedVisitors),
   }));
 
-  // 手残りがいちばん多い列に印を付ける（どれを選べばいいかの一番の手がかり）
+  // 手残りがいちばん多い列に印を付ける（どれを選べばいいかの一番の手がかり）。
+  // 同額のときは先頭の1列だけに付ける。「これにする」の直後は「今」と適用した案が
+  // 完全に同額になるため、一致した全部に付けるとどれを選ぶべきか読めなくなる。
+  // 先頭＝「今」なので、その場合は「今のままで最良」と読めて意味も合う
   const bestProfit = Math.max(...columns.map((c) => c.result.profit));
+  const bestIndex  = columns.findIndex((c) => c.result.profit === bestProfit);
 
   // 行の並びは商品の並び。原価未登録は全列で除外されるので「今」の行を基準にできる
   const productRows = columns[0].result.lines;
@@ -80,13 +84,13 @@ export function ScenarioCompareTable({
               {/* 左上の角。行見出しの列と案の列が交わるだけの空セル */}
               <th className="sticky left-0 z-10 border-b border-border bg-card px-3 py-2" />
 
-              {columns.map((col) => (
+              {columns.map((col, i) => (
                 <th
                   key={col.id}
                   className={`${COL_CLASS} border-b border-l border-border px-2 py-2 text-center font-medium text-foreground`}
                 >
                   <span className="inline-flex items-center gap-1">
-                    {col.result.profit === bestProfit && (
+                    {i === bestIndex && (
                       <Crown className="w-3 h-3 shrink-0 text-amber-500" aria-label="いちばん残る" />
                     )}
                     <span className="truncate">{col.label}</span>

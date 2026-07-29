@@ -73,7 +73,10 @@ export function ScenarioDialog({
   const [edits, setEdits] = useState<Record<string, Draft> | null>(null);
   const drafts = edits ?? initialDrafts(recipes, scenario?.items);
 
-  // 閉じたら入力を初期状態へ戻す（途中まで書き換えた値が次に開いたとき残らないように）
+  // 途中でやめて閉じたら入力を捨てる（書きかけの値が次に開いたとき残らないように）。
+  // 保存が成功したときはこの onClose は呼ばれない（useEntityDialog の仕様。
+  // 保存済みの値まで巻き戻さないための挙動）ので、追加モードの後始末は
+  // onSubmit 側で明示的に行う
   const dialog = useEntityDialog({ onClose: () => setEdits(null) });
 
   function setDraft(recipeId: string, patch: Partial<Draft>) {
@@ -107,6 +110,11 @@ export function ScenarioDialog({
           return;
         }
         await createScenario(projectId, formData);
+        // 追加モードは同じダイアログを次の1件にも使い回す。
+        // 入力を捨てておかないと、次に開いたとき「今のレシピの値」ではなく
+        // いま保存した案の値が初期値として出てしまう
+        setEdits(null);
+        return { resetForm: true };
       }}
       onDelete={
         scenario && {
