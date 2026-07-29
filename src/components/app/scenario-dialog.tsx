@@ -173,7 +173,10 @@ export function ScenarioDialog({
                     name={`price-${r.recipeId}`}
                     type="number"
                     inputMode="numeric"
-                    step="10"
+                    // step は min を基準に検証されるため step=10/min=1 だと
+                    // 1,11,21… だけが有効になり ¥1,550 が弾かれる。
+                    // 10円単位は値付けの目安であって制約ではないので刻みは1にする
+                    step="1"
                     min="1"
                     required
                     value={draft.price}
