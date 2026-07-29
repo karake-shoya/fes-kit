@@ -5,6 +5,7 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { date: "2026-07-29", title: "パターンを表で見くらべられるようにしました（今の設定とも比較）" },
   { date: "2026-07-29", title: "実績に「かかるお金を引いた手残り」を表示するようにしました" },
   { date: "2026-07-29", title: "AIに出店全体の値段と個数を相談できるようにしました" },
   { date: "2026-07-29", title: "採算のパターンを保存して見くらべられるようにしました" },

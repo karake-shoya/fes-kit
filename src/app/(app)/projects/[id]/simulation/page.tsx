@@ -17,6 +17,7 @@ import { AppHeader } from "@/components/app/app-header";
 import { PageMain, EmptyState } from "@/components/app/page-shell";
 import { ScenarioDialog } from "@/components/app/scenario-dialog";
 import { ScenarioCard } from "@/components/app/scenario-card";
+import { ScenarioCompareTable } from "@/components/app/scenario-compare-table";
 import { AiSimulationPanel } from "@/components/app/ai-simulation-panel";
 import { Button } from "@/components/ui/button";
 import {
@@ -238,19 +239,29 @@ function ScenarioSection({
           何案ためしても商品の情報は変わりません。
         </p>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {scenarios.map((scenario) => (
-            <ScenarioCard
-              key={scenario.id}
-              projectId={projectId}
-              scenario={scenario}
-              recipes={recipes}
-              fixedCost={fixedCost}
-              expectedVisitors={expectedVisitors}
-              canEdit={canEdit}
-            />
-          ))}
-        </ul>
+        <>
+          <ul className="flex flex-col gap-2">
+            {scenarios.map((scenario) => (
+              <ScenarioCard
+                key={scenario.id}
+                projectId={projectId}
+                scenario={scenario}
+                recipes={recipes}
+                fixedCost={fixedCost}
+                expectedVisitors={expectedVisitors}
+                canEdit={canEdit}
+              />
+            ))}
+          </ul>
+
+          {/* カードは1案ずつの答え。商品ごとの突き合わせはこの表が担う */}
+          <ScenarioCompareTable
+            recipes={recipes}
+            scenarios={scenarios}
+            fixedCost={fixedCost}
+            expectedVisitors={expectedVisitors}
+          />
+        </>
       )}
 
       {canEdit && scenarios.length >= SCENARIO_LIMIT && (
