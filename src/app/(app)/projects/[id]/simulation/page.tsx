@@ -7,16 +7,23 @@ import {
   TriangleAlert,
   ClipboardList,
   Info,
+  Plus,
+  Layers,
 } from "lucide-react";
 import { requireProjectPage } from "@/lib/auth";
 import { getSimulationInput } from "@/db/queries/simulation";
+import { SCENARIO_LIMIT, type ScenarioWithItems } from "@/db/queries/scenarios";
 import { AppHeader } from "@/components/app/app-header";
 import { PageMain, EmptyState } from "@/components/app/page-shell";
+import { ScenarioDialog } from "@/components/app/scenario-dialog";
+import { ScenarioCard } from "@/components/app/scenario-card";
+import { Button } from "@/components/ui/button";
 import {
   calcBreakeven,
   calcScenarioProfit,
   calcPurchaseRate,
   type BreakevenResult,
+  type BreakevenRecipe,
 } from "@/lib/breakeven";
 import { formatYen } from "@/lib/format";
 
@@ -34,7 +41,7 @@ export default async function SimulationPage({
 }) {
   const { id } = await params;
 
-  const [, input] = await Promise.all([
+  const [{ canEdit }, input] = await Promise.all([
     requireProjectPage(id),
     getSimulationInput(id),
   ]);
@@ -102,6 +109,15 @@ export default async function SimulationPage({
               </section>
             )}
 
+            <ScenarioSection
+              projectId={id}
+              scenarios={input.scenarios}
+              recipes={input.recipes}
+              fixedCost={input.fixedCost}
+              expectedVisitors={input.expectedVisitors}
+              canEdit={canEdit}
+            />
+
             {/* 商品ごとの内訳 */}
             <section className="flex flex-col gap-2">
               <h2 className="text-sm font-semibold text-foreground px-1">商品ごとの内訳</h2>
@@ -160,6 +176,84 @@ export default async function SimulationPage({
         )}
       </PageMain>
     </>
+  );
+}
+
+/**
+ * 採算パターン（値段と個数を変えた案）の一覧。
+ *
+ * 実績記録ページに仮の数字を入れて確かめる、という元の困りごとの受け皿。
+ * ここで何案作っても商品の情報は変わらず、「これにする」で初めて反映される。
+ */
+function ScenarioSection({
+  projectId,
+  scenarios,
+  recipes,
+  fixedCost,
+  expectedVisitors,
+  canEdit,
+}: {
+  projectId: string;
+  scenarios: ScenarioWithItems[];
+  recipes: BreakevenRecipe[];
+  fixedCost: number;
+  expectedVisitors: number | null;
+  canEdit: boolean;
+}) {
+  // 閲覧者で1件も無いときは、操作できない空欄を見せても意味がないので出さない
+  if (!canEdit && scenarios.length === 0) return null;
+
+  const canAdd = canEdit && scenarios.length < SCENARIO_LIMIT;
+
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex items-center gap-2 px-1">
+        <h2 className="text-sm font-semibold text-foreground inline-flex items-center gap-1.5">
+          <Layers className="w-4 h-4 text-primary" />
+          パターンで比べる
+        </h2>
+        {canAdd && (
+          <ScenarioDialog
+            projectId={projectId}
+            recipes={recipes}
+            fixedCost={fixedCost}
+            expectedVisitors={expectedVisitors}
+          >
+            <Button size="sm" variant="outline" className="ml-auto h-8">
+              <Plus className="w-4 h-4" /> 追加
+            </Button>
+          </ScenarioDialog>
+        )}
+      </div>
+
+      {scenarios.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border px-3 py-4 text-xs text-muted-foreground leading-relaxed">
+          値段と売る個数を変えた案を保存して、手残りを見くらべられます。
+          <br />
+          何案ためしても商品の情報は変わりません。
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {scenarios.map((scenario) => (
+            <ScenarioCard
+              key={scenario.id}
+              projectId={projectId}
+              scenario={scenario}
+              recipes={recipes}
+              fixedCost={fixedCost}
+              expectedVisitors={expectedVisitors}
+              canEdit={canEdit}
+            />
+          ))}
+        </ul>
+      )}
+
+      {canEdit && scenarios.length >= SCENARIO_LIMIT && (
+        <p className="px-1 text-xs text-muted-foreground/70">
+          パターンは{SCENARIO_LIMIT}件までです。新しく作るときは使わないものを削除してください。
+        </p>
+      )}
+    </section>
   );
 }
 

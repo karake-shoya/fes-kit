@@ -3,6 +3,7 @@ import {
   calcBreakeven,
   calcScenarioProfit,
   calcPurchaseRate,
+  evaluateScenario,
   sumExpenses,
   type BreakevenRecipe,
 } from "@/lib/breakeven";
@@ -178,6 +179,117 @@ describe("calcScenarioProfit", () => {
       grossProfit: 0,
       profit: -5000,
     });
+  });
+});
+
+describe("evaluateScenario", () => {
+  it("パターンの価格・個数で手残りを計算する", () => {
+    // (400-100)×30 = 9000円、固定費5000円 → 4000円
+    const result = evaluateScenario(
+      [recipe()],
+      [{ recipeId: "r-1", sellingPrice: 400, quantity: 30 }],
+      5000
+    );
+
+    expect(result.totalQuantity).toBe(30);
+    expect(result.revenue).toBe(12000);
+    expect(result.ingredientCost).toBe(3000);
+    expect(result.profit).toBe(4000);
+    expect(result.lines[0].sellingPrice).toBe(400);
+  });
+
+  it("原価はパターンではなく材料マスタの今の値を使う", () => {
+    // 材料が値上がりして原価が100→250になったら、同じパターンでも利益は減る
+    const result = evaluateScenario(
+      [recipe({ unitCost: 250 })],
+      [{ recipeId: "r-1", sellingPrice: 400, quantity: 30 }],
+      0
+    );
+
+    expect(result.lines[0].unitCost).toBe(250);
+    expect(result.lines[0].marginPerUnit).toBe(150);
+    expect(result.profit).toBe(4500);
+  });
+
+  it("今のレシピの価格も返して、パターンとの差が分かるようにする", () => {
+    const result = evaluateScenario(
+      [recipe({ sellingPrice: 300 })],
+      [{ recipeId: "r-1", sellingPrice: 400, quantity: 30 }],
+      0
+    );
+
+    expect(result.lines[0].currentPrice).toBe(300);
+    expect(result.lines[0].sellingPrice).toBe(400);
+  });
+
+  it("パターンに入っていない商品は0個として扱い、名前を知らせる", () => {
+    // パターンを作った後に商品が増えたケース。黙って無視すると数字の理由が分からない
+    const result = evaluateScenario(
+      [recipe(), recipe({ recipeId: "r-2", name: "焼きそば" })],
+      [{ recipeId: "r-1", sellingPrice: 400, quantity: 30 }],
+      5000
+    );
+
+    expect(result.unlisted.map((u) => u.name)).toEqual(["焼きそば"]);
+    const yakisoba = result.lines.find((l) => l.recipeId === "r-2");
+    expect(yakisoba?.quantity).toBe(0);
+    // 0個なので利益には効かない
+    expect(result.profit).toBe(4000);
+  });
+
+  it("削除された商品の明細は無視する", () => {
+    const result = evaluateScenario(
+      [recipe()],
+      [
+        { recipeId: "r-1", sellingPrice: 400, quantity: 30 },
+        { recipeId: "deleted", sellingPrice: 500, quantity: 100 },
+      ],
+      0
+    );
+
+    expect(result.lines).toHaveLength(1);
+    expect(result.totalQuantity).toBe(30);
+  });
+
+  it("原価未登録の商品は計算から除外して名前を返す", () => {
+    const result = evaluateScenario(
+      [recipe(), recipe({ recipeId: "r-2", name: "わたあめ", hasCost: false, unitCost: 0 })],
+      [
+        { recipeId: "r-1", sellingPrice: 400, quantity: 30 },
+        { recipeId: "r-2", sellingPrice: 200, quantity: 50 },
+      ],
+      5000
+    );
+
+    expect(result.lines).toHaveLength(1);
+    expect(result.excluded.map((e) => e.name)).toEqual(["わたあめ"]);
+    expect(result.totalQuantity).toBe(30);
+    expect(result.profit).toBe(4000);
+  });
+
+  it("原価割れの商品は1個あたり利益がマイナスのまま合計に効く", () => {
+    // 黙って除外すると「このパターンなら黒字」という嘘になるため、赤字のまま数える
+    const result = evaluateScenario(
+      [recipe(), recipe({ recipeId: "r-2", name: "特製セット", unitCost: 600 })],
+      [
+        { recipeId: "r-1", sellingPrice: 400, quantity: 30 },
+        { recipeId: "r-2", sellingPrice: 500, quantity: 10 },
+      ],
+      0
+    );
+
+    const set = result.lines.find((l) => l.recipeId === "r-2");
+    expect(set?.marginPerUnit).toBe(-100);
+    // 9000 + (-1000) = 8000
+    expect(result.profit).toBe(8000);
+  });
+
+  it("商品が1件も無ければ固定費ぶんのマイナスになる", () => {
+    const result = evaluateScenario([], [], 5000);
+
+    expect(result.lines).toEqual([]);
+    expect(result.totalQuantity).toBe(0);
+    expect(result.profit).toBe(-5000);
   });
 });
 

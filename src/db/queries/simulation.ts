@@ -1,6 +1,7 @@
 import { getRecipes } from "@/db/queries/recipes";
 import { getProjectExpenses } from "@/db/queries/expenses";
 import { getExpectedVisitors } from "@/db/queries/projects";
+import { getScenarios } from "@/db/queries/scenarios";
 import { sumExpenses, type BreakevenRecipe } from "@/lib/breakeven";
 
 // レシピ一覧（原価計算済み）を損益分岐点の入力に変換する。
@@ -20,12 +21,14 @@ export function toBreakevenRecipes(
   }));
 }
 
-// 採算シミュレーション画面が必要とする一式（商品・かかるお金・想定来場者数）
+// 採算シミュレーション画面が必要とする一式
+// （商品・かかるお金・想定来場者数・保存済みのパターン）
 export async function getSimulationInput(projectId: string) {
-  const [recipeList, expenses, expectedVisitors] = await Promise.all([
+  const [recipeList, expenses, expectedVisitors, scenarios] = await Promise.all([
     getRecipes(projectId),
     getProjectExpenses(projectId),
     getExpectedVisitors(projectId),
+    getScenarios(projectId),
   ]);
 
   return {
@@ -33,5 +36,6 @@ export async function getSimulationInput(projectId: string) {
     expenses,
     fixedCost: sumExpenses(expenses),
     expectedVisitors,
+    scenarios,
   };
 }

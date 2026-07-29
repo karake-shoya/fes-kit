@@ -16,7 +16,8 @@ export type ProjectData =
   | "checklist"    // 持ち物・準備チェックリスト
   | "prototypes"   // 試作記録
   | "salesRecords" // 当日の売上・実績
-  | "expenses";    // かかるお金（固定費）
+  | "expenses"     // かかるお金（固定費）
+  | "scenarios";   // 採算パターン
 
 // プロジェクト配下の画面
 type Screen =
@@ -43,6 +44,9 @@ const AFFECTED_SCREENS: Record<ProjectData, Screen[]> = {
   salesRecords: ["home"],
   // かかるお金は損益分岐点の分子そのもの。ホームのカードにも合計を出している
   expenses:     ["expenses", "simulation", "home"],
+  // パターンは採算シミュレーション画面の中だけで完結する（recipes への反映は
+  // 「これにする」が別途 recipes として再検証する）
+  scenarios:    ["simulation"],
 };
 
 // 再検証するパスと、その範囲（page = そのページだけ / layout = 配下のページも含む）

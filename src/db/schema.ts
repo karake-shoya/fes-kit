@@ -173,6 +173,35 @@ export const projectExpenses = sqliteTable("project_expenses", {
   projectIdIdx: index("idx_project_expenses_project_id").on(t.projectId),
 }));
 
+// 採算パターン（「この価格でこれだけ売ったらどうなるか」の案）
+// 実データを汚さずに試すための入れ物。「これにする」で明示的に recipes へ書き戻すまで、
+// recipes.sellingPrice / servings には一切触らない
+export const simulationScenarios = sqliteTable("simulation_scenarios", {
+  id:        text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  name:      text("name").notNull(),            // パターン名（例：強気プラン）
+  // manual = 自分で入力 / ai = AI診断の提案（AI由来だと分かるようにする）
+  source:    text("source", { enum: ["manual", "ai"] }).notNull().default("manual"),
+  memo:      text("memo"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+}, (t) => ({
+  projectIdIdx: index("idx_simulation_scenarios_project_id").on(t.projectId),
+}));
+
+// パターンの明細（1商品1行）。
+// 原価は保存しない — 材料マスタの最新値で毎回計算し直す（「今の材料費だとこの案はどうか」を見る道具）
+export const simulationItems = sqliteTable("simulation_items", {
+  scenarioId:   text("scenario_id").notNull().references(() => simulationScenarios.id, { onDelete: "cascade" }),
+  recipeId:     text("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
+  sellingPrice: real("selling_price").notNull(),
+  quantity:     integer("quantity").notNull().default(0),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.scenarioId, t.recipeId] }),
+  // scenarioId は複合PKの先頭列のためSQLiteの自動索引でカバー済み。recipeId のみ追加索引が必要
+  recipeIdIdx: index("idx_simulation_items_recipe_id").on(t.recipeId),
+}));
+
 // 型エクスポート
 export type User              = typeof users.$inferSelect;
 export type Project           = typeof projects.$inferSelect;
@@ -186,3 +215,5 @@ export type SalesRecord       = typeof salesRecords.$inferSelect;
 export type Schedule          = typeof schedules.$inferSelect;
 export type ChecklistItem     = typeof checklistItems.$inferSelect;
 export type ProjectExpense    = typeof projectExpenses.$inferSelect;
+export type SimulationScenario = typeof simulationScenarios.$inferSelect;
+export type SimulationItem     = typeof simulationItems.$inferSelect;

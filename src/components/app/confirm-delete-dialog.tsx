@@ -1,12 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/app/confirm-dialog";
 
 type Props = {
   open: boolean;
@@ -19,8 +13,9 @@ type Props = {
   onConfirm: () => void;
 };
 
-// 「本当に削除しますか？」をモーダルで確認するダイアログ。
+// 「本当に削除しますか？」の確認ダイアログ。
 // スワイプ削除・編集ダイアログなど複数箇所から共用する。
+// 見た目・挙動は ConfirmDialog と共通で、削除向けの文言だけをここが決める。
 export function ConfirmDeleteDialog({
   open,
   onOpenChange,
@@ -30,33 +25,16 @@ export function ConfirmDeleteDialog({
   onConfirm,
 }: Props) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[86vw] max-w-xs rounded-2xl" showCloseButton={false}>
-        <DialogHeader>
-          <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
-        </DialogHeader>
-        <p className="text-sm text-muted-foreground leading-relaxed">{message}</p>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isPending}
-            onClick={() => onOpenChange(false)}
-            className="flex-1"
-          >
-            キャンセル
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={isPending}
-            onClick={onConfirm}
-            className="flex-1"
-          >
-            {isPending ? "削除中…" : "削除する"}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      message={message}
+      confirmLabel="削除する"
+      pendingLabel="削除中…"
+      variant="destructive"
+      isPending={isPending}
+      onConfirm={onConfirm}
+    />
   );
 }

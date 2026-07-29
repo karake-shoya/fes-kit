@@ -94,6 +94,86 @@ export function calcPurchaseRate(
   return totalQuantity / expectedVisitors;
 }
 
+// パターン（採算のシナリオ）の明細1件分。保存するのは価格と個数だけで、
+// 原価は保存しない（材料の値上がりを常に今の値で見たいため）
+export type ScenarioLineInput = {
+  recipeId:     string;
+  sellingPrice: number;
+  quantity:     number;
+};
+
+export type ScenarioLine = {
+  recipeId:      string;
+  name:          string;
+  sellingPrice:  number;  // パターンの販売価格
+  currentPrice:  number;  // 今のレシピの販売価格（パターンとの差を見せる）
+  unitCost:      number;  // 材料マスタの最新値から計算した原価
+  marginPerUnit: number;
+  quantity:      number;
+  subtotal:      number;  // m_i × q_i（この商品がどれだけ稼ぐか）
+};
+
+export type ScenarioResult = ScenarioProfit & {
+  lines:         ScenarioLine[];
+  /** 原価未登録で計算から外した商品 */
+  excluded:      { recipeId: string; name: string }[];
+  /** パターンを作った後に増えた商品（0個として扱っている） */
+  unlisted:      { recipeId: string; name: string }[];
+  totalQuantity: number;
+  fixedCost:     number;
+};
+
+/**
+ * 保存したパターンを、今の材料費で評価する。
+ *
+ * 明細ではなく「今あるレシピ」を軸に走査するので、
+ * 商品が消えた明細は自然に落ち、後から増えた商品は0個として並ぶ。
+ */
+export function evaluateScenario(
+  recipes: BreakevenRecipe[],
+  items: ScenarioLineInput[],
+  fixedCost: number
+): ScenarioResult {
+  const byRecipeId = new Map(items.map((i) => [i.recipeId, i]));
+
+  // 原価未登録は利益を過大評価するため、損益分岐点と同じ方針で外す
+  const excluded = recipes
+    .filter((r) => !r.hasCost)
+    .map((r) => ({ recipeId: r.recipeId, name: r.name }));
+  const unlisted = recipes
+    .filter((r) => r.hasCost && !byRecipeId.has(r.recipeId))
+    .map((r) => ({ recipeId: r.recipeId, name: r.name }));
+
+  const lines: ScenarioLine[] = recipes
+    .filter((r) => r.hasCost)
+    .map((r) => {
+      const item          = byRecipeId.get(r.recipeId);
+      const sellingPrice  = item?.sellingPrice ?? r.sellingPrice;
+      const quantity      = item?.quantity ?? 0;
+      const marginPerUnit = sellingPrice - r.unitCost;
+
+      return {
+        recipeId:     r.recipeId,
+        name:         r.name,
+        sellingPrice,
+        currentPrice: r.sellingPrice,
+        unitCost:     r.unitCost,
+        marginPerUnit,
+        quantity,
+        subtotal:     marginPerUnit * quantity,
+      };
+    });
+
+  return {
+    ...calcScenarioProfit(lines, fixedCost),
+    lines,
+    excluded,
+    unlisted,
+    totalQuantity: lines.reduce((sum, l) => sum + l.quantity, 0),
+    fixedCost,
+  };
+}
+
 /**
  * 今の販売価格のまま、かかるお金を回収するには何個売ればよいかを求める。
  *
