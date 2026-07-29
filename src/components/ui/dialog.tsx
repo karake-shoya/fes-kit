@@ -62,6 +62,12 @@ function DialogContent({
         data-slot="dialog-content"
         className={cn(
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-6 rounded-4xl bg-popover p-6 text-sm text-popover-foreground ring-1 ring-foreground/5 duration-100 outline-none sm:max-w-md data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // 中身が画面より高くなっても掴めるようにする。上限を置かないと
+          // 画面中央固定のまま上下へはみ出し、背後のページはスクロールロック中なので
+          // どこにも触れなくなる（商品の数だけ伸びるパターン入力で表面化した）。
+          // dvh はモバイルのアドレスバー分を含んだ実際の高さ。
+          // overscroll-contain で、端まで来ても背後のページへスクロールが伝わらないようにする
+          "max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain",
           className
         )}
         {...props}

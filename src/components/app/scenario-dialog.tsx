@@ -195,33 +195,40 @@ export function ScenarioDialog({
         })}
       </div>
 
-      {/* 入力に合わせて動く手残り。保存前に結果が見えるのがこの画面の要 */}
-      <div className="rounded-xl border border-primary/15 bg-primary/5 px-3 py-3 flex flex-col gap-1">
-        <div className="flex items-end justify-between gap-2">
-          <span className="text-xs text-muted-foreground">
-            全部{preview.totalQuantity}個 売れたら手残り
-          </span>
-          <span
-            className={`text-2xl font-bold tabular-nums ${
-              preview.profit >= 0 ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            {formatYen(preview.profit)}
-          </span>
+      {/* 入力に合わせて動く手残り。保存前に結果が見えるのがこの画面の要なので、
+          商品が多くて縦に伸びても常に見えるよう下端に貼り付ける。
+          外側を不透明（bg-popover）にしないと、下を流れる入力欄が透けて読めなくなる */}
+      {/* ダイアログの左右パディング(p-6)を打ち消して端まで伸ばし、上辺の線と影を付ける。
+          カードと同じ見た目のまま貼り付けると、下を通る入力欄が隠れたときに
+          「カードが消えた」と読めてしまうため、固定バーだと分かる形にする */}
+      <div className="sticky bottom-0 -mx-6 border-t border-border bg-popover px-6 py-3 shadow-[0_-8px_16px_-10px_rgba(0,0,0,0.15)]">
+        <div className="rounded-xl border border-primary/15 bg-primary/5 px-3 py-3 flex flex-col gap-1">
+          <div className="flex items-end justify-between gap-2">
+            <span className="text-xs text-muted-foreground">
+              全部{preview.totalQuantity}個 売れたら手残り
+            </span>
+            <span
+              className={`text-2xl font-bold tabular-nums ${
+                preview.profit >= 0 ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              {formatYen(preview.profit)}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground/70">
+            売上 {formatYen(preview.revenue)} − 材料費 {formatYen(preview.ingredientCost)} −
+            かかるお金 {formatYen(fixedCost)}
+            {purchaseRate !== null && (
+              <>
+                <br />
+                来場者{expectedVisitors}人のうち{Math.round(purchaseRate * 100)}%が買う計算
+                {purchaseRate > 1 && (
+                  <span className="text-red-600">（全員が1個以上買う前提です）</span>
+                )}
+              </>
+            )}
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground/70">
-          売上 {formatYen(preview.revenue)} − 材料費 {formatYen(preview.ingredientCost)} −
-          かかるお金 {formatYen(fixedCost)}
-          {purchaseRate !== null && (
-            <>
-              <br />
-              来場者{expectedVisitors}人のうち{Math.round(purchaseRate * 100)}%が買う計算
-              {purchaseRate > 1 && (
-                <span className="text-red-600">（全員が1個以上買う前提です）</span>
-              )}
-            </>
-          )}
-        </p>
       </div>
     </EntityFormDialog>
   );
