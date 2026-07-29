@@ -114,6 +114,7 @@ export default async function SimulationPage({
             <ScenarioSection
               projectId={id}
               scenarios={input.scenarios}
+              backup={input.backup}
               recipes={input.recipes}
               fixedCost={input.fixedCost}
               expectedVisitors={input.expectedVisitors}
@@ -192,6 +193,7 @@ export default async function SimulationPage({
 function ScenarioSection({
   projectId,
   scenarios,
+  backup,
   recipes,
   fixedCost,
   expectedVisitors,
@@ -200,6 +202,8 @@ function ScenarioSection({
 }: {
   projectId: string;
   scenarios: ScenarioWithItems[];
+  /** 「これにする」の直前に自動保存された控え（1件だけ・まだ一度も押していなければ null） */
+  backup: ScenarioWithItems | null;
   recipes: BreakevenRecipe[];
   fixedCost: number;
   expectedVisitors: number | null;
@@ -268,6 +272,21 @@ function ScenarioSection({
         <p className="px-1 text-xs text-muted-foreground/70">
           パターンは{SCENARIO_LIMIT}件までです。新しく作るときは使わないものを削除してください。
         </p>
+      )}
+
+      {/* 「これにする」の控え。上書きは取り消せないので、戻る道をここに置く */}
+      {canEdit && backup && (
+        <ul className="flex flex-col gap-2">
+          <ScenarioCard
+            projectId={projectId}
+            scenario={backup}
+            recipes={recipes}
+            fixedCost={fixedCost}
+            expectedVisitors={expectedVisitors}
+            canEdit={canEdit}
+            isBackup
+          />
+        </ul>
       )}
 
       {canEdit && aiEnabled && (

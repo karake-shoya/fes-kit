@@ -2,15 +2,16 @@
 
 import { db } from "@/db/db";
 import { recipes, simulationScenarios, simulationItems } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { requireProjectRole } from "@/lib/auth";
 import { revalidateProject } from "@/lib/revalidate";
 import { parsePositiveNumber, parseNonNegativeInt } from "@/lib/parse";
-import { getRecipeNames } from "@/db/queries/recipes";
+import { getRecipeNames, getRecipePlanRows } from "@/db/queries/recipes";
 import {
   assertScenarioInProject,
   countScenarios,
   getScenarioItems,
+  BACKUP_SOURCE,
   SCENARIO_LIMIT,
 } from "@/db/queries/scenarios";
 import type { ScenarioLineInput } from "@/lib/breakeven";
@@ -188,6 +189,11 @@ export async function deleteScenario(scenarioId: string, projectId: string) {
  * ここが唯一 recipes を書き換える場所。逆に言えば、それまでは何度試しても
  * 実データは汚れない（非破壊で試せることがこの機能の前提）。
  *
+ * 上書きは取り消せないので、**書き換える直前の状態を控えとして自動保存する**。
+ * 控えは1件だけ持ち、押すたびに上書きする（戻せるのは1手前まで）。
+ * 控えを適用すると、そのとき控えに入るのは「戻す直前＝適用後の状態」になるので、
+ * もう一度押せば戻る（行き来できる）。
+ *
  * 売る個数が0の商品は「今回は作らない」の意味だが、作る予定数に0を書くと
  * レシピ編集（1以上必須）と食い違うため、価格だけ反映して予定数は据え置く。
  */
@@ -195,23 +201,75 @@ export async function applyScenario(scenarioId: string, projectId: string) {
   await requireProjectRole(projectId);
   await assertScenarioInProject(scenarioId, projectId);
 
+  // 控えを撮る前に読み切る。控えの対象が自分自身（＝戻す操作）でも成立させるため
   const items = await getScenarioItems(scenarioId);
   if (items.length === 0) throw new Error("このパターンには商品がありません");
 
-  const updatedAt = new Date().toISOString();
-  const statements = items.map((item) =>
-    db
-      .update(recipes)
-      .set({
-        sellingPrice: item.sellingPrice,
-        // 0個は「作らない」の意味。予定数は触らず価格だけ反映する
-        ...(item.quantity > 0 ? { servings: item.quantity } : {}),
-        updatedAt,
-      })
-      .where(and(eq(recipes.id, item.recipeId), eq(recipes.projectId, projectId)))
-  );
+  // 控えは一部の商品ではなく「今のレシピ全部」を写す（戻したときに欠けが出ないように）
+  const current = await getRecipePlanRows(projectId);
 
-  // 1件でも失敗したら全部やめる（価格だけ変わって個数が古いまま、を避ける）
+  const updatedAt  = new Date().toISOString();
+  const backupId   = crypto.randomUUID();
+  const backupName = "変更前（自動保存）";
+
+  // 古い控えを明細ごと消す。FK の cascade 設定に頼らず自分で消す
+  const clearBackup = [
+    db.delete(simulationItems).where(
+      inArray(
+        simulationItems.scenarioId,
+        db
+          .select({ id: simulationScenarios.id })
+          .from(simulationScenarios)
+          .where(
+            and(
+              eq(simulationScenarios.projectId, projectId),
+              eq(simulationScenarios.source, BACKUP_SOURCE)
+            )
+          )
+      )
+    ),
+    db.delete(simulationScenarios).where(
+      and(
+        eq(simulationScenarios.projectId, projectId),
+        eq(simulationScenarios.source, BACKUP_SOURCE)
+      )
+    ),
+  ];
+
+  // 写す商品が1件も無いなら控えは作らない（明細ゼロで INSERT すると drizzle が例外を投げる）。
+  // 削除は cascade に頼らない方針なので、レシピが消えても明細が残ることは起こりうる
+  const writeBackup = current.length === 0 ? [] : [
+    db.insert(simulationScenarios).values({
+      id: backupId, projectId, name: backupName, source: BACKUP_SOURCE,
+    }),
+    db.insert(simulationItems).values(
+      current.map((r) => ({
+        scenarioId:   backupId,
+        recipeId:     r.id,
+        sellingPrice: r.sellingPrice,
+        quantity:     r.servings,
+      }))
+    ),
+  ];
+
+  const statements = [
+    ...clearBackup,
+    ...writeBackup,
+    ...items.map((item) =>
+      db
+        .update(recipes)
+        .set({
+          sellingPrice: item.sellingPrice,
+          // 0個は「作らない」の意味。予定数は触らず価格だけ反映する
+          ...(item.quantity > 0 ? { servings: item.quantity } : {}),
+          updatedAt,
+        })
+        .where(and(eq(recipes.id, item.recipeId), eq(recipes.projectId, projectId)))
+    ),
+  ];
+
+  // 控えの保存と上書きを1トランザクションにする。
+  // 別々だと「控えを撮り損ねたまま上書きされる」＝戻せない状態が起きうる
   await db.batch(statements as [(typeof statements)[number], ...typeof statements]);
 
   // recipes の波及先にシミュレーション画面も含まれるため、これ1本で足りる

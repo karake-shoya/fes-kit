@@ -181,7 +181,9 @@ export const simulationScenarios = sqliteTable("simulation_scenarios", {
   projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   name:      text("name").notNull(),            // パターン名（例：強気プラン）
   // manual = 自分で入力 / ai = AI診断の提案（AI由来だと分かるようにする）
-  source:    text("source", { enum: ["manual", "ai"] }).notNull().default("manual"),
+  // auto = 「これにする」の直前に自動で撮った控え。1プロジェクトに1件だけ持ち、
+  //        押すたびに上書きする（戻せるのは1手前まで）。手動パターンの上限には数えない
+  source:    text("source", { enum: ["manual", "ai", "auto"] }).notNull().default("manual"),
   memo:      text("memo"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),

@@ -38,12 +38,13 @@ export async function getBreakevenInput(projectId: string) {
   };
 }
 
-// 採算シミュレーション画面が必要とする一式（上記 ＋ 保存済みのパターン）
+// 採算シミュレーション画面が必要とする一式
+// （上記 ＋ 保存済みのパターン ＋ 「これにする」直前の自動控え）
 export async function getSimulationInput(projectId: string) {
-  const [base, scenarios] = await Promise.all([
+  const [base, { patterns, backup }] = await Promise.all([
     getBreakevenInput(projectId),
     getScenarios(projectId),
   ]);
 
-  return { ...base, scenarios };
+  return { ...base, scenarios: patterns, backup };
 }

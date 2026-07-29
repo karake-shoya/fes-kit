@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, TriangleAlert } from "lucide-react";
+import { Check, TriangleAlert, Undo2 } from "lucide-react";
 import { SwipeActionCard } from "@/components/app/swipe-action-card";
 import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { ScenarioDialog } from "@/components/app/scenario-dialog";
@@ -25,6 +25,12 @@ type Props = {
   expectedVisitors: number | null;
   // editor 以上なら編集・削除・「これにする」が使える
   canEdit: boolean;
+  /**
+   * 「これにする」の直前に自動保存された控えか。
+   * 控えは中身を人が編集するものではないので、編集・スワイプ削除を出さず、
+   * ボタンも「ひとつ前に戻す」に変える。
+   */
+  isBackup?: boolean;
 };
 
 /**
@@ -38,6 +44,7 @@ export function ScenarioCard({
   fixedCost,
   expectedVisitors,
   canEdit,
+  isBackup = false,
 }: Props) {
   const [confirmApply, setConfirmApply] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -56,10 +63,13 @@ export function ScenarioCard({
       try {
         await applyScenario(scenario.id, projectId);
         setConfirmApply(false);
-        showToast(`「${scenario.name}」を商品に反映しました`, "success");
+        showToast(
+          isBackup ? "変更前の値段に戻しました" : `「${scenario.name}」を商品に反映しました`,
+          "success"
+        );
         router.refresh();
       } catch {
-        showToast("反映できませんでした");
+        showToast(isBackup ? "戻せませんでした" : "反映できませんでした");
       }
     });
   }
@@ -99,13 +109,18 @@ export function ScenarioCard({
 
   return (
     <SwipeActionCard
-      enabled={canEdit}
+      // 控えは人が消すものではない（次の「これにする」で自動的に入れ替わる）
+      enabled={canEdit && !isBackup}
       deleteAriaLabel="このパターンを削除"
       confirmMessage={<>「{scenario.name}」を削除します。<br />この操作は取り消せません。</>}
       onDelete={() => deleteScenario(scenario.id, projectId)}
     >
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        {canEdit ? (
+      <div
+        className={`flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border shadow-sm ${
+          isBackup ? "border-dashed border-border bg-muted/30" : "border-border bg-card"
+        }`}
+      >
+        {canEdit && !isBackup ? (
           <ScenarioDialog
             projectId={projectId}
             recipes={recipes}
@@ -128,21 +143,38 @@ export function ScenarioCard({
           <button
             type="button"
             onClick={() => setConfirmApply(true)}
-            className="flex items-center justify-center gap-1.5 border-t border-border py-2.5 text-xs font-medium text-primary active:bg-primary/5 transition-colors"
+            className={`flex items-center justify-center gap-1.5 border-t py-2.5 text-xs font-medium transition-colors ${
+              isBackup
+                ? "border-border text-muted-foreground active:bg-muted"
+                : "border-border text-primary active:bg-primary/5"
+            }`}
           >
-            <Check className="w-3.5 h-3.5" />
-            これにする
+            {isBackup ? <Undo2 className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
+            {isBackup ? "ひとつ前に戻す" : "これにする"}
           </button>
         )}
 
         <ConfirmDialog
           open={confirmApply}
           onOpenChange={setConfirmApply}
-          title="商品に反映しますか？"
+          title={isBackup ? "変更前に戻しますか？" : "商品に反映しますか？"}
           message={
             <>
-              「{scenario.name}」の値段と作る予定数を、
-              いまの商品に上書きします。
+              {isBackup ? (
+                <>
+                  商品の値段と作る予定数を、
+                  前回「これにする」を押す直前の状態に戻します。
+                  <br />
+                  いまの状態がこの控えに入れ替わるので、もう一度押せば行き来できます。
+                </>
+              ) : (
+                <>
+                  「{scenario.name}」の値段と作る予定数を、
+                  いまの商品に上書きします。
+                  <br />
+                  いまの値段は「変更前（自動保存）」として残るので、あとで戻せます。
+                </>
+              )}
               {zeroQuantity.length > 0 && (
                 <>
                   <br />
@@ -152,8 +184,8 @@ export function ScenarioCard({
               )}
             </>
           }
-          confirmLabel="これにする"
-          pendingLabel="反映中…"
+          confirmLabel={isBackup ? "戻す" : "これにする"}
+          pendingLabel={isBackup ? "戻しています…" : "反映中…"}
           isPending={isPending}
           onConfirm={handleApply}
         />
