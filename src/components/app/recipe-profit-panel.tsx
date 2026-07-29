@@ -31,7 +31,7 @@ type Props = {
   initialLines: RecipeCostRow[];   // 詳細クエリの cost.lines をそのまま渡す
   allIngredients: import("@/db/schema").Ingredient[];
   canEdit: boolean;
-  aiEnabled: boolean;              // AI_GATEWAY_API_KEY 設定時のみ true
+  aiEnabled: boolean;              // ANTHROPIC_API_KEY 設定時のみ true
 };
 
 // レシピ詳細の「利益サマリー＋材料エディタ」を束ねるクライアントパネル。
@@ -355,7 +355,7 @@ export function RecipeProfitPanel({
           ) : null}
         </div>
 
-        {/* AIに価格を相談（AI_GATEWAY_API_KEY 設定時・編集者・材料ありのときのみ） */}
+        {/* AIに価格を相談（ANTHROPIC_API_KEY 設定時・編集者・材料ありのときのみ） */}
         {canEdit && aiEnabled && hasCost && (
           <div className="border-t border-border pt-3 flex flex-col gap-2">
             <button

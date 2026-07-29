@@ -24,6 +24,9 @@ export const projects = sqliteTable("projects", {
   name:        text("name").notNull(),
   description: text("description"),
   eventDate:   text("event_date"),              // YYYY-MM-DD
+  // 想定来場者数。採算シミュレーションで「何人に1人が買う想定か（購入率）」の
+  // 分母に使い、非現実的な販売個数を警告する。未入力なら購入率は出さない
+  expectedVisitors: integer("expected_visitors"),
   ownerId:     text("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   createdAt:   text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt:   text("updated_at").notNull().default(sql`(datetime('now'))`),
@@ -155,6 +158,52 @@ export const checklistItems = sqliteTable("checklist_items", {
   projectIdIdx: index("idx_checklist_items_project_id").on(t.projectId),
 }));
 
+// かかるお金（個数に比例しない費用＝固定費。出店料・テントレンタル・ガスボンベなど）
+// 材料費と違い商品に紐づかないため、プロジェクト単位のリストとして持つ。
+// 容器・割り箸のような1個ごとにかかる費用は、材料マスタ側に登録して原価に含める
+export const projectExpenses = sqliteTable("project_expenses", {
+  id:        text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  label:     text("label").notNull(),           // 費目名（例：出店料）
+  amount:    real("amount").notNull(),          // 金額（円）
+  memo:      text("memo"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+}, (t) => ({
+  projectIdIdx: index("idx_project_expenses_project_id").on(t.projectId),
+}));
+
+// 採算パターン（「この価格でこれだけ売ったらどうなるか」の案）
+// 実データを汚さずに試すための入れ物。「これにする」で明示的に recipes へ書き戻すまで、
+// recipes.sellingPrice / servings には一切触らない
+export const simulationScenarios = sqliteTable("simulation_scenarios", {
+  id:        text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  name:      text("name").notNull(),            // パターン名（例：強気プラン）
+  // manual = 自分で入力 / ai = AI診断の提案（AI由来だと分かるようにする）
+  // auto = 「これにする」の直前に自動で撮った控え。1プロジェクトに1件だけ持ち、
+  //        押すたびに上書きする（戻せるのは1手前まで）。手動パターンの上限には数えない
+  source:    text("source", { enum: ["manual", "ai", "auto"] }).notNull().default("manual"),
+  memo:      text("memo"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+}, (t) => ({
+  projectIdIdx: index("idx_simulation_scenarios_project_id").on(t.projectId),
+}));
+
+// パターンの明細（1商品1行）。
+// 原価は保存しない — 材料マスタの最新値で毎回計算し直す（「今の材料費だとこの案はどうか」を見る道具）
+export const simulationItems = sqliteTable("simulation_items", {
+  scenarioId:   text("scenario_id").notNull().references(() => simulationScenarios.id, { onDelete: "cascade" }),
+  recipeId:     text("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
+  sellingPrice: real("selling_price").notNull(),
+  quantity:     integer("quantity").notNull().default(0),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.scenarioId, t.recipeId] }),
+  // scenarioId は複合PKの先頭列のためSQLiteの自動索引でカバー済み。recipeId のみ追加索引が必要
+  recipeIdIdx: index("idx_simulation_items_recipe_id").on(t.recipeId),
+}));
+
 // 型エクスポート
 export type User              = typeof users.$inferSelect;
 export type Project           = typeof projects.$inferSelect;
@@ -167,3 +216,6 @@ export type PrototypeLog      = typeof prototypeLogs.$inferSelect;
 export type SalesRecord       = typeof salesRecords.$inferSelect;
 export type Schedule          = typeof schedules.$inferSelect;
 export type ChecklistItem     = typeof checklistItems.$inferSelect;
+export type ProjectExpense    = typeof projectExpenses.$inferSelect;
+export type SimulationScenario = typeof simulationScenarios.$inferSelect;
+export type SimulationItem     = typeof simulationItems.$inferSelect;

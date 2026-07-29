@@ -60,6 +60,23 @@ export function ProjectSettingsForm({ project, canEdit }: Props) {
         />
       </div>
       <div className="flex flex-col gap-1.5">
+        <Label htmlFor="expectedVisitors">想定来場者数</Label>
+        <Input
+          id="expectedVisitors"
+          name="expectedVisitors"
+          type="number"
+          inputMode="numeric"
+          step="1"
+          min="0"
+          placeholder="例：500"
+          defaultValue={project.expectedVisitors ?? ""}
+          disabled={!canEdit}
+        />
+        <p className="text-xs text-muted-foreground">
+          入れておくと、採算シミュレーションで「来場者の何人に1人が買う計算か」を確認できます。
+        </p>
+      </div>
+      <div className="flex flex-col gap-1.5">
         <Label htmlFor="description">説明・メモ</Label>
         <Textarea
           id="description"

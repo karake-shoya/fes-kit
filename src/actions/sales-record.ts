@@ -1,10 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { db } from "@/db/db";
 import { salesRecords } from "@/db/schema";
-import { requireAuth } from "@/lib/auth";
-import { assertProjectAccess } from "@/db/queries/auth";
+import { requireProjectRole } from "@/lib/auth";
+import { revalidateProject } from "@/lib/revalidate";
 import { assertRecipeInProject } from "@/db/queries/recipes";
 import { parseNonNegativeInt } from "@/lib/parse";
 
@@ -15,8 +14,7 @@ export async function setSalesRecord(
   projectId: string,
   input: { madeCount: string | number; soldCount: string | number }
 ) {
-  const userId = await requireAuth();
-  await assertProjectAccess(projectId, userId, "editor");
+  await requireProjectRole(projectId);
   await assertRecipeInProject(recipeId, projectId);
 
   const madeCount = parseNonNegativeInt(input.madeCount, "作った数");
@@ -30,8 +28,7 @@ export async function setSalesRecord(
       set: { madeCount, soldCount, updatedAt: new Date().toISOString() },
     });
 
-  // 実績ページ自身は revalidate しない。呼び出し元カードがローカルstateで
-  // 最新値を表示しており、保存のたびに再レンダーが返ると連打編集中の値が
-  // 古いサーバー値に巻き戻される競合の原因になるため（再訪時は動的レンダーで整合）。
-  revalidatePath(`/projects/${projectId}`); // ホームのバッジ（記録済み件数）
+  // 実績ページ自身を再検証しない理由は revalidate.ts の対応表に書いてある
+  // （連打編集中の値がサーバー値に巻き戻るのを避けるため、ホームのバッジだけ更新する）
+  revalidateProject(projectId, "salesRecords");
 }

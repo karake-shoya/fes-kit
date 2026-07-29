@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
-import { requireAuth } from "@/lib/auth";
-import { getProject, getMyRole } from "@/db/queries/projects";
+import { requireAuth, projectAccessOf } from "@/lib/auth";
+import { getProject } from "@/db/queries/projects";
 import { ProjectSettingsForm } from "@/components/app/project-settings-form";
 import { DeleteProjectButton } from "@/components/app/delete-project-button";
 import { InviteSection } from "@/components/app/invite-section";
 import { AppHeader } from "@/components/app/app-header";
+import { PageMain } from "@/components/app/page-shell";
 import { MemberAvatar } from "@/components/app/member-avatar";
 import { ROLE_LABEL, PILL_CLASS } from "@/lib/format";
 
@@ -13,23 +14,22 @@ export default async function ProjectSettingsPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id }  = await params;
-  const userId  = await requireAuth();
-  const project = await getProject(id);
+  const { id } = await params;
 
+  const [userId, project] = await Promise.all([requireAuth(), getProject(id)]);
   if (!project) notFound();
 
-  const myRole = await getMyRole(id, userId);
-  if (!myRole) notFound();
-
-  const canEdit   = myRole === "owner" || myRole === "editor";
-  const isOwner   = myRole === "owner";
+  // メンバー一覧を取得済みなので、自分のロールはそこから読む（同じ問い合わせを二度しない）
+  const { canEdit, isOwner } = projectAccessOf(
+    userId,
+    project.members.find((m) => m.userId === userId)?.role
+  );
 
   return (
     <>
       <AppHeader title="プロジェクト設定" backHref={`/projects/${id}`} />
 
-      <main className="px-4 py-6 flex flex-col gap-6 max-w-lg mx-auto">
+      <PageMain gap={6}>
         {/* プロジェクト情報編集 */}
         <section className="bg-card rounded-2xl border border-border px-4 py-4 flex flex-col gap-4">
           <h2 className="font-semibold text-foreground">基本情報</h2>
@@ -71,7 +71,7 @@ export default async function ProjectSettingsPage({
             <DeleteProjectButton projectId={id} />
           </section>
         )}
-      </main>
+      </PageMain>
     </>
   );
 }

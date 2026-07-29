@@ -93,6 +93,19 @@ export async function getRecipeWithCost(
   return { recipe, cost: calcRecipeCost(recipe.sellingPrice, rows) };
 }
 
+// 今の販売価格・作る予定数だけを引く軽量クエリ（原価計算はしない）。
+// 「これにする」の直前に、今の状態を控えとして保存するために使う
+export async function getRecipePlanRows(projectId: string) {
+  return db
+    .select({
+      id:           recipes.id,
+      sellingPrice: recipes.sellingPrice,
+      servings:     recipes.servings,
+    })
+    .from(recipes)
+    .where(eq(recipes.projectId, projectId));
+}
+
 // レシピのid・nameのみ取得（ドロップダウン用軽量クエリ）
 export async function getRecipeNames(projectId: string) {
   return db
