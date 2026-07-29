@@ -74,24 +74,76 @@ async function replaceItems(scenarioId: string, items: ScenarioLineInput[]) {
   ]);
 }
 
+/**
+ * パターンを1件作る（手入力・AI提案で共通）。上限チェックもここでまとめる。
+ *
+ * 本体と明細は**同じ batch**（＝1トランザクション）で入れる。別々に投げると、
+ * 明細だけ失敗したときに明細ゼロのパターンが残り、一覧に
+ * 「全商品が入っていません・手残り −固定費」の幽霊カードが出てしまう。
+ * id を自分で採番すれば `.returning()` を待たずに1回で入れられる。
+ */
+async function insertScenario(
+  projectId: string,
+  name: string,
+  items: ScenarioLineInput[],
+  source: "manual" | "ai"
+) {
+  if ((await countScenarios(projectId)) >= SCENARIO_LIMIT) {
+    throw new Error(`パターンは${SCENARIO_LIMIT}件までです。使わないものを削除してください`);
+  }
+
+  const scenarioId = crypto.randomUUID();
+
+  await db.batch([
+    db.insert(simulationScenarios).values({ id: scenarioId, projectId, name, source }),
+    db.insert(simulationItems).values(items.map((i) => ({ scenarioId, ...i }))),
+  ]);
+
+  revalidateProject(projectId, "scenarios");
+}
+
 export async function createScenario(projectId: string, formData: FormData) {
   await requireProjectRole(projectId);
 
   const name  = parseScenarioName(formData);
   const items = await parseScenarioItems(projectId, formData);
 
-  if ((await countScenarios(projectId)) >= SCENARIO_LIMIT) {
-    throw new Error(`パターンは${SCENARIO_LIMIT}件までです。使わないものを削除してください`);
-  }
+  await insertScenario(projectId, name, items, "manual");
+}
 
-  const [scenario] = await db
-    .insert(simulationScenarios)
-    .values({ projectId, name })
-    .returning({ id: simulationScenarios.id });
+/**
+ * AI診断の提案をパターンとして保存する。
+ *
+ * 提案は `suggestSimulation()` が検算済みだが、**値はクライアントを一往復してくる**ので
+ * ここでも商品の所属・数値をもう一度検証する（画面を信用して書き込まない）。
+ */
+export async function saveAiScenario(
+  projectId: string,
+  name: string,
+  items: ScenarioLineInput[]
+) {
+  await requireProjectRole(projectId);
 
-  await replaceItems(scenario.id, items);
+  const projectRecipeIds = new Set((await getRecipeNames(projectId)).map((r) => r.id));
 
-  revalidateProject(projectId, "scenarios");
+  // 明細は (パターン, 商品) が主キー。同じ商品が2度来ると INSERT ごと失敗するので、
+  // ここで最初の1件だけを残す（明細1件あたりの重複は画面の都合であって保存の都合ではない）
+  const seen = new Set<string>();
+  const validated = items.flatMap((item) => {
+    if (!projectRecipeIds.has(item.recipeId)) throw new Error("商品が見つかりません");
+    if (seen.has(item.recipeId)) return [];
+    seen.add(item.recipeId);
+
+    return [{
+      recipeId:     item.recipeId,
+      sellingPrice: parsePositiveNumber(String(item.sellingPrice), "販売価格"),
+      quantity:     parseNonNegativeInt(item.quantity, "売る個数"),
+    }];
+  });
+
+  if (validated.length === 0) throw new Error("商品を1つ以上登録してください");
+
+  await insertScenario(projectId, name.trim() || "AIの提案", validated, "ai");
 }
 
 export async function updateScenario(

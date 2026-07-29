@@ -42,8 +42,9 @@ const AFFECTED_SCREENS: Record<ProjectData, Screen[]> = {
   // 保存のたびに再レンダーが返ると連打編集中の値が古いサーバー値へ巻き戻るため
   // （再訪時は動的レンダーで整合する）。ホームのバッジだけ更新する。
   salesRecords: ["home"],
-  // かかるお金は損益分岐点の分子そのもの。ホームのカードにも合計を出している
-  expenses:     ["expenses", "simulation", "home"],
+  // かかるお金は損益分岐点の分子そのもの。ホームのカードにも合計を出している。
+  // 実績ページの「手残り」も実績利益からこの合計を引いて出している
+  expenses:     ["expenses", "simulation", "home", "results"],
   // パターンは採算シミュレーション画面の中だけで完結する（recipes への反映は
   // 「これにする」が別途 recipes として再検証する）
   scenarios:    ["simulation"],

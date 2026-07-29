@@ -21,14 +21,13 @@ export function toBreakevenRecipes(
   }));
 }
 
-// 採算シミュレーション画面が必要とする一式
-// （商品・かかるお金・想定来場者数・保存済みのパターン）
-export async function getSimulationInput(projectId: string) {
-  const [recipeList, expenses, expectedVisitors, scenarios] = await Promise.all([
+// 採算の計算そのものに要る一式（商品・かかるお金・想定来場者数）。
+// AI診断のように保存済みパターンを見ない用途はこちらを使う
+export async function getBreakevenInput(projectId: string) {
+  const [recipeList, expenses, expectedVisitors] = await Promise.all([
     getRecipes(projectId),
     getProjectExpenses(projectId),
     getExpectedVisitors(projectId),
-    getScenarios(projectId),
   ]);
 
   return {
@@ -36,6 +35,15 @@ export async function getSimulationInput(projectId: string) {
     expenses,
     fixedCost: sumExpenses(expenses),
     expectedVisitors,
-    scenarios,
   };
+}
+
+// 採算シミュレーション画面が必要とする一式（上記 ＋ 保存済みのパターン）
+export async function getSimulationInput(projectId: string) {
+  const [base, scenarios] = await Promise.all([
+    getBreakevenInput(projectId),
+    getScenarios(projectId),
+  ]);
+
+  return { ...base, scenarios };
 }

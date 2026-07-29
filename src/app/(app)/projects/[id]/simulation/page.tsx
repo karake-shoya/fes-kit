@@ -17,6 +17,7 @@ import { AppHeader } from "@/components/app/app-header";
 import { PageMain, EmptyState } from "@/components/app/page-shell";
 import { ScenarioDialog } from "@/components/app/scenario-dialog";
 import { ScenarioCard } from "@/components/app/scenario-card";
+import { AiSimulationPanel } from "@/components/app/ai-simulation-panel";
 import { Button } from "@/components/ui/button";
 import {
   calcBreakeven,
@@ -116,6 +117,8 @@ export default async function SimulationPage({
               fixedCost={input.fixedCost}
               expectedVisitors={input.expectedVisitors}
               canEdit={canEdit}
+              // 原価が分かる商品が無いと値付けの相談ができない（AI側でも弾く）
+              aiEnabled={!!process.env.ANTHROPIC_API_KEY && result.lines.length > 0}
             />
 
             {/* 商品ごとの内訳 */}
@@ -192,6 +195,7 @@ function ScenarioSection({
   fixedCost,
   expectedVisitors,
   canEdit,
+  aiEnabled,
 }: {
   projectId: string;
   scenarios: ScenarioWithItems[];
@@ -199,6 +203,7 @@ function ScenarioSection({
   fixedCost: number;
   expectedVisitors: number | null;
   canEdit: boolean;
+  aiEnabled: boolean;
 }) {
   // 閲覧者で1件も無いときは、操作できない空欄を見せても意味がないので出さない
   if (!canEdit && scenarios.length === 0) return null;
@@ -252,6 +257,13 @@ function ScenarioSection({
         <p className="px-1 text-xs text-muted-foreground/70">
           パターンは{SCENARIO_LIMIT}件までです。新しく作るときは使わないものを削除してください。
         </p>
+      )}
+
+      {canEdit && aiEnabled && (
+        <AiSimulationPanel
+          projectId={projectId}
+          canSave={scenarios.length < SCENARIO_LIMIT}
+        />
       )}
     </section>
   );
