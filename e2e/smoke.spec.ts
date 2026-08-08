@@ -19,6 +19,23 @@ test("サインイン画面に Clerk のフォームが出る", async ({ page })
 
   // Clerk のコンポーネントは cl- 接頭辞のクラスで描画される。
   // 文言はロケール設定で変わるため、文字列ではなく構造で確かめる。
-  await expect(page.locator(".cl-signIn-root")).toBeVisible({ timeout: 30_000 });
+  const form = page.locator(".cl-signIn-root");
+
+  try {
+    await expect(form).toBeVisible({ timeout: 30_000 });
+  } catch (error) {
+    // フォームが出ないとき、Clerk はアラートだけのページを返すことがある
+    // （ボット検知に弾かれた場合など）。原因の切り分けに文言が要るので、
+    // 落とす前にアラートの中身を読んでメッセージに添える。
+    const alert = page.getByRole("alert").first();
+    const detail =
+      (await alert.count()) > 0
+        ? await alert.innerText().catch(() => "(読み取れず)")
+        : "(アラートも無し)";
+    throw new Error(`サインインフォームが出なかった。画面のアラート: ${detail}`, {
+      cause: error,
+    });
+  }
+
   await expect(page.locator('input[name="identifier"]')).toBeVisible();
 });
