@@ -1,11 +1,11 @@
+import { setupClerkTestingToken } from "@clerk/testing/playwright";
 import { expect, test } from "@playwright/test";
 
 // 読み取りだけのスモーク。データを1件も書き換えない。
 //
 // なぜ読み取りだけで止めているか：
-// Vercel の Preview が Production と同じ Turso を見ていないことを、まだ目視で確認できていない。
-// 書き込みを伴うテスト（③5「これにする」など）は、そこが確定してから足す。
-// 詳細は docs/2026-08-08_実機確認25項目の仕分け.md を参照。
+// 書き込みを伴うテスト（③5「これにする」など）は、Preview 専用DBへの切り替えを
+// 実測で確認してから足す。詳細は docs/2026-08-08_実機確認25項目の仕分け.md を参照。
 
 test("トップページが表示される", async ({ page }) => {
   const response = await page.goto("/");
@@ -15,26 +15,45 @@ test("トップページが表示される", async ({ page }) => {
 });
 
 test("サインイン画面に Clerk のフォームが出る", async ({ page }) => {
+  // ボット検知を通すための Testing Token を仕込む。これが無いと
+  // ヘッドレスのブラウザはサインイン画面に到達できない。
+  await setupClerkTestingToken({ page });
+
+  // 失敗したときに原因を掴むため、ブラウザ側のエラーを拾っておく。
+  const consoleErrors: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error") consoleErrors.push(msg.text());
+  });
+  page.on("pageerror", (error) => consoleErrors.push(`pageerror: ${error.message}`));
+
   await page.goto("/sign-in");
 
-  // Clerk のコンポーネントは cl- 接頭辞のクラスで描画される。
-  // 文言はロケール設定で変わるため、文字列ではなく構造で確かめる。
   const form = page.locator(".cl-signIn-root");
 
+  // 待ち時間はテスト全体の制限時間より短くする。
+  // 同着にすると、失敗した瞬間にページが閉じられて下の診断が動かない。
   try {
-    await expect(form).toBeVisible({ timeout: 30_000 });
+    await expect(form).toBeVisible({ timeout: 15_000 });
   } catch (error) {
-    // フォームが出ないとき、Clerk はアラートだけのページを返すことがある
-    // （ボット検知に弾かれた場合など）。原因の切り分けに文言が要るので、
-    // 落とす前にアラートの中身を読んでメッセージに添える。
     const alert = page.getByRole("alert").first();
-    const detail =
+    const alertText =
       (await alert.count()) > 0
         ? await alert.innerText().catch(() => "(読み取れず)")
-        : "(アラートも無し)";
-    throw new Error(`サインインフォームが出なかった。画面のアラート: ${detail}`, {
-      cause: error,
-    });
+        : "(アラート無し)";
+    const bodyText = await page
+      .locator("body")
+      .innerText()
+      .catch(() => "(読み取れず)");
+
+    throw new Error(
+      [
+        "サインインフォームが出なかった。",
+        `アラート: ${alertText}`,
+        `本文: ${bodyText.slice(0, 300)}`,
+        `コンソールエラー: ${consoleErrors.slice(0, 5).join(" / ") || "なし"}`,
+      ].join("\n"),
+      { cause: error },
+    );
   }
 
   await expect(page.locator('input[name="identifier"]')).toBeVisible();
