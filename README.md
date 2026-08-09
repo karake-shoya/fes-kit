@@ -20,8 +20,10 @@
 | ORM | Drizzle ORM | |
 | ストレージ | Cloudflare R2 (S3互換) | 試作写真のアップロード |
 | デプロイ | Vercel | |
-| テスト | Vitest | 原価計算・入力パース・買い出し積算・損益分岐点など、DB非依存の純粋ロジックのみ |
-| ランタイム | Node.js v22 LTS（v20以上必須） | |
+| ユニットテスト | Vitest | 原価計算・入力パース・買い出し積算・損益分岐点など、DB非依存の純粋ロジックのみ |
+| E2Eテスト | Playwright + `@clerk/testing` | iPhone 13（WebKit）と Desktop Chrome の2プロジェクトで実行（後述） |
+| CI | GitHub Actions | PR と main への push で lint / test / build を実行（後述） |
+| ランタイム | Node.js v22 LTS（v20以上必須） | CI は Node 24 で実行 |
 
 ### Next.js 16の注意点
 
@@ -269,11 +271,61 @@ DBがリモート（Turso）にあるため、クエリの完了を待って画�
 
 ---
 
+## テストとCI（何がどこまで守られているか）
+
+feskit の律速は着手ではなく**検証**にあります。Clerk 認証後の画面は Claude の preview ツールで開けないため、
+確認待ちが溜まるほど未検証の在庫が増えます。そこで検証を2層に分けています。
+
+| 層 | 何を保証するか | 鍵の要否 | 実行場所 |
+|---|---|---|---|
+| CI（`.github/workflows/ci.yml`） | 型・lint・ユニットテスト・本番ビルドが通る | 不要 | GitHub Actions（PR と main への push） |
+| E2E（`playwright.config.ts` + `e2e/`） | 画面が実際に表示され、操作できる | 必要 | 手元から実行（CI 未接続） |
+
+**CI は画面の見た目と操作を保証しません。** そこは E2E の担当です。
+
+### CI
+
+`npm ci` → `npm run lint` → `npm run test` → `npm run build` を順に実行します。
+`src/db/db.ts` がモジュール読み込み時に `createClient()` を呼ぶため、環境変数が無いとビルド自体が落ちます。
+CI では**実在しないダミー値**をワークフローに直書きして通しています（本物の秘密情報ではないので Secrets に置きません）。
+
+### E2E
+
+```bash
+npx playwright test                  # 既定はローカルの dev サーバー（自動起動）
+E2E_BASE_URL=https://... npx playwright test   # Vercel のプレビューに当てる
+```
+
+- **ブラウザは2つ併走**します。`mobile-webkit`（iPhone 13）が主で、WebKit 固有の描画差と `hasTouch` を要するスワイプ削除を見ます。
+  `desktop-chromium` は比較表の横スクロールがデスクトップ幅で崩れないことを見ます。
+- **Clerk のボット検知を通すために Testing Token を使います**（`e2e/global.setup.ts`）。
+  このインスタンスは `bot_protection.captcha_enabled = true` なので、素のヘッドレスブラウザはサインイン画面に到達できません。
+  Testing Token は開発インスタンスに対してのみ有効で、本番インスタンスでは効きません。
+- **Vercel のプレビューは SSO で保護されています**（適用範囲 `all_except_custom_domains`）。
+  プレビューに当てるときは `VERCEL_AUTOMATION_BYPASS_SECRET` が必須で、無いと1リクエストも通りません。
+- 鍵は `.env.local` から読みます（`process.loadEnvFile`）。実行のたびに `export` する必要はありません。
+
+### 現在のスコープ：読み取りのみ
+
+`e2e/smoke.spec.ts` はトップページとサインイン画面の表示だけを見ます。**データを1件も書き換えません。**
+
+🔴 **書き込みを伴うテストを足す前に、Vercel の Preview 環境の `TURSO_DATABASE_URL` が
+Production と別のDBを指していることを目視で確認してください。**
+`vercel env ls` では Preview と Production の行が別々に存在することまでしか分からず（値は暗号化されている）、
+**別エントリであることは別DBであることの証明になりません**。
+間違っていた場合に壊れるのは実際の出店データです。ここだけは推測で進めません。
+
+実機確認25項目のうち何を E2E が肩代わりできるかの仕分けは
+[`docs/2026-08-08_実機確認25項目の仕分け.md`](docs/2026-08-08_実機確認25項目の仕分け.md) にあります（A:20件 / B:5件 / C:0件）。
+
+---
+
 ## ディレクトリ構成
 
 ```
 src/
-├── actions/        Server Actions（project, ingredient, recipe, schedule, prototype, upload）
+├── actions/        Server Actions（project, ingredient, recipe, schedule, prototype, upload,
+│                   expense, scenario, sales-record, checklist, invitation, ai-price, ai-simulation）
 ├── app/
 │   ├── (app)/      認証必須のアプリ画面（dashboard, projects/...）
 │   ├── (auth)/     サインイン・サインアップ
@@ -293,7 +345,11 @@ src/
 │                   *.test.ts が隣に並ぶ（純粋ロジックのみ）
 └── proxy.ts        Clerk ミドルウェア（公開ルート以外を保護）
 
+e2e/                Playwright の E2E（global.setup.ts でClerk Testing Tokenを取得）
+docs/               設計・調査の記録（版管理される。`.claude/` は gitignore 済みなので置かない）
 drizzle/            生成されたマイグレーション
+public/             静的ファイル（マスコット画像等）
+.github/workflows/  CI 定義
 ```
 
 ### 機能を足すときの作法
@@ -346,6 +402,14 @@ NEXT_PUBLIC_R2_PUBLIC_URL=https://...  # バケットの公開URLベース
 # Claude API（Anthropic）の API キー。https://console.anthropic.com/ で発行。
 # 未設定でもアプリは動作し、AIボタンのみ非表示になる。
 ANTHROPIC_API_KEY=sk-ant-...
+
+# E2E（Playwright・任意）
+# 宛先。未設定ならローカルの dev サーバー（http://localhost:3000）を自動起動して当てる。
+E2E_BASE_URL=https://fes-kit-git-<ブランチ名>-karake-shoyas-projects.vercel.app
+# Vercel のプレビューに当てるときは必須。Vercel ダッシュボードの
+# Settings → Deployment Protection → Protection Bypass for Automation で発行する。
+# これが無いと SSO に弾かれて1リクエストも通らない。
+VERCEL_AUTOMATION_BYPASS_SECRET=...
 ```
 
 ### 3. データベースのマイグレーション
@@ -382,6 +446,7 @@ Clerk ダッシュボードで `/api/webhooks/clerk` をエンドポイントに
 | `npm run lint` | ESLint |
 | `npm run test` | Vitest（純粋ロジックのテストを1回実行） |
 | `npm run test:watch` | Vitest（監視モード） |
+| `npx playwright test` | E2E（npm script は未定義。宛先は `E2E_BASE_URL`、既定はローカル） |
 | `npm run db:generate` | マイグレーション生成 |
 | `npm run db:migrate` | マイグレーション適用 |
 | `npm run db:studio` | Drizzle Studio 起動 |
