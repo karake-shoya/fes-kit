@@ -21,7 +21,7 @@ const zenMaru = Zen_Maru_Gothic({
 
 export const metadata: Metadata = {
   title: "FesKit",
-  description: "模擬店出店管理アプリ",
+  description: "出店の採算管理アプリ",
   appleWebApp: {
     capable: true,
     title: "FesKit",

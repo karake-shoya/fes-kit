@@ -1,6 +1,6 @@
 import { getRecipes } from "@/db/queries/recipes";
 import { getProjectExpenses } from "@/db/queries/expenses";
-import { getExpectedVisitors } from "@/db/queries/projects";
+import { getSimulationSettings } from "@/db/queries/projects";
 import { getScenarios } from "@/db/queries/scenarios";
 import { sumExpenses, type BreakevenRecipe } from "@/lib/breakeven";
 
@@ -21,20 +21,20 @@ export function toBreakevenRecipes(
   }));
 }
 
-// 採算の計算そのものに要る一式（商品・かかるお金・想定来場者数）。
+// 採算の計算そのものに要る一式（商品・かかるお金・想定来場者数・目標利益）。
 // AI診断のように保存済みパターンを見ない用途はこちらを使う
 export async function getBreakevenInput(projectId: string) {
-  const [recipeList, expenses, expectedVisitors] = await Promise.all([
+  const [recipeList, expenses, settings] = await Promise.all([
     getRecipes(projectId),
     getProjectExpenses(projectId),
-    getExpectedVisitors(projectId),
+    getSimulationSettings(projectId),
   ]);
 
   return {
     recipes:   toBreakevenRecipes(recipeList),
     expenses,
     fixedCost: sumExpenses(expenses),
-    expectedVisitors,
+    ...settings,
   };
 }
 

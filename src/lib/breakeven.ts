@@ -5,7 +5,7 @@
 //
 // 記号:
 //   c_i = 1個あたり原価 / p_i = 販売価格 / m_i = 1個あたり利益 (p_i - c_i)
-//   F   = かかるお金（固定費）の合計 / q_i = 販売個数
+//   F   = かかるお金（固定費）の合計 / q_i = 販売個数 / T = 目標利益
 //   利益 = Σ(m_i × q_i) − F
 
 // 浮動小数点の丸め誤差（例: 39.999999999999996）で個数を1つ多く見積もらないための遊び。
@@ -44,6 +44,8 @@ export type BreakevenStatus =
 export type BreakevenResult = {
   status:         BreakevenStatus;
   fixedCost:      number;
+  /** 逆算に使った目標利益。0 なら損益分岐点（＝赤字を防ぐ側）の答え */
+  targetProfit:   number;
   lines:          BreakevenLine[];
   /** 原価未登録で計算から外した商品（画面で理由を明示するため名前を返す） */
   excluded:       { recipeId: string; name: string }[];
@@ -175,16 +177,20 @@ export function evaluateScenario(
 }
 
 /**
- * 今の販売価格のまま、かかるお金を回収するには何個売ればよいかを求める。
+ * 今の販売価格のまま、目標の手残りに届くには何個売ればよいかを求める。
  *
  * 商品ごとの個数は「今の作る予定数の構成比 r_i」を保ったまま全体をスケールする
  * （段取り＝仕込みのバランスを崩さないため）。
  *
- *   Σ(m_i × r_i × Q) = F  →  Q = F ÷ Σ(m_i × r_i),  q_i = ceil(r_i × Q)
+ *   Σ(m_i × r_i × Q) = F + T  →  Q = (F + T) ÷ Σ(m_i × r_i),  q_i = ceil(r_i × Q)
+ *
+ * 目標利益 T を省くと T=0、つまり損益分岐点（＝赤字を防ぐ側）になる。
+ * 「利益を読む」側と「赤字を防ぐ」側は同じ式の特殊ケースなので関数を分けない。
  */
 export function calcBreakeven(
   recipes: BreakevenRecipe[],
-  fixedCost: number
+  fixedCost: number,
+  targetProfit: number = 0
 ): BreakevenResult {
   // 原価未登録は利益を過大評価するため計算から外す（実績ページと同じ方針）
   const targets  = recipes.filter((r) => r.hasCost);
@@ -203,6 +209,7 @@ export function calcBreakeven(
   const empty = (status: BreakevenStatus): BreakevenResult => ({
     status,
     fixedCost,
+    targetProfit,
     lines: baseLines.map((l) => ({ ...l, quantity: 0 })),
     excluded,
     totalQuantity: 0,
@@ -211,23 +218,28 @@ export function calcBreakeven(
     profit: status === "noFixedCost" ? 0 : -fixedCost,
   });
 
-  if (baseLines.length === 0) return empty("noRecipes");
-  if (fixedCost <= 0)         return empty("noFixedCost");
+  // 売って回収すべき額。目標利益があれば、かかるお金が0でも売る意味がある
+  const goal = fixedCost + targetProfit;
 
-  // 全体を1個売るごとに増える平均利益。0以下なら売るほど赤字が増えるので解なし
+  if (baseLines.length === 0) return empty("noRecipes");
+  if (!(goal > 0))            return empty("noFixedCost");
+
+  // 全体を1個売るごとに増える平均利益。0以下なら売るほど赤字が増えるので解なし。
+  // NaN との比較は常に false になるため `<= 0` ではなく「0より大きい」を肯定形で判定する。
+  // こうしないと NaN が素通りして Math.ceil(x / NaN) = NaN を返し、画面に「NaN個」と出る
   const marginPerScale = baseLines.reduce((sum, l) => sum + l.marginPerUnit * l.ratio, 0);
-  if (marginPerScale <= 0) return empty("unprofitable");
+  if (!(marginPerScale > 0)) return empty("unprofitable");
 
   const quantitiesFor = (scale: number) =>
     baseLines.map((l) => ({ ...l, quantity: Math.ceil(l.ratio * scale - EPSILON) }));
 
-  let scale = fixedCost / marginPerScale;
+  let scale = goal / marginPerScale;
   let lines = quantitiesFor(scale);
   let totals = calcScenarioProfit(lines, fixedCost);
 
   // 商品ごとの切り上げは赤字商品を増やす方向にも働くため、
-  // 「トントン」と言いながら利益が負に沈むことがある。黒字に戻るまで全体を1個ずつ増やす
-  for (let i = 0; totals.profit < 0 && i < MAX_ADJUST; i++) {
+  // 目標に届いたと言いながら手残りが目標を下回ることがある。届くまで全体を1個ずつ増やす
+  for (let i = 0; totals.profit < targetProfit && i < MAX_ADJUST; i++) {
     scale += 1;
     lines  = quantitiesFor(scale);
     totals = calcScenarioProfit(lines, fixedCost);
@@ -236,6 +248,7 @@ export function calcBreakeven(
   return {
     status: "ok",
     fixedCost,
+    targetProfit,
     lines,
     excluded,
     totalQuantity:  lines.reduce((sum, l) => sum + l.quantity, 0),

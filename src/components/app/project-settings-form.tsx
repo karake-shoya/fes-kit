@@ -77,6 +77,23 @@ export function ProjectSettingsForm({ project, canEdit }: Props) {
         </p>
       </div>
       <div className="flex flex-col gap-1.5">
+        <Label htmlFor="targetProfit">目標の手残り</Label>
+        <Input
+          id="targetProfit"
+          name="targetProfit"
+          type="number"
+          inputMode="numeric"
+          step="1"
+          min="0"
+          placeholder="例：30000"
+          defaultValue={project.targetProfit ?? ""}
+          disabled={!canEdit}
+        />
+        <p className="text-xs text-muted-foreground">
+          入れておくと、採算シミュレーションで「その額を残すには何個売るか」を逆算します。
+        </p>
+      </div>
+      <div className="flex flex-col gap-1.5">
         <Label htmlFor="description">説明・メモ</Label>
         <Textarea
           id="description"

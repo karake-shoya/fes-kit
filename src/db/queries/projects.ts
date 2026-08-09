@@ -82,15 +82,24 @@ export async function getProjectMeta(projectId: string) {
   return project ?? null;
 }
 
-// 想定来場者数だけを引く軽量クエリ（採算シミュレーションの購入率判定に使う）
-export async function getExpectedVisitors(projectId: string): Promise<number | null> {
+// 採算シミュレーションが使うプロジェクト設定だけを引く軽量クエリ。
+// 想定来場者数は購入率の判定に、目標利益は「その額に届くには何個か」の逆算に使う
+export async function getSimulationSettings(
+  projectId: string
+): Promise<{ expectedVisitors: number | null; targetProfit: number | null }> {
   const [project] = await db
-    .select({ expectedVisitors: projects.expectedVisitors })
+    .select({
+      expectedVisitors: projects.expectedVisitors,
+      targetProfit:     projects.targetProfit,
+    })
     .from(projects)
     .where(eq(projects.id, projectId))
     .limit(1);
 
-  return project?.expectedVisitors ?? null;
+  return {
+    expectedVisitors: project?.expectedVisitors ?? null,
+    targetProfit:     project?.targetProfit ?? null,
+  };
 }
 
 // AI 診断のコンテキスト用（プロジェクト名・説明・イベント日）の軽量クエリ

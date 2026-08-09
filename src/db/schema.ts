@@ -27,6 +27,9 @@ export const projects = sqliteTable("projects", {
   // 想定来場者数。採算シミュレーションで「何人に1人が買う想定か（購入率）」の
   // 分母に使い、非現実的な販売個数を警告する。未入力なら購入率は出さない
   expectedVisitors: integer("expected_visitors"),
+  // この出店で残したい手残り（円）。採算シミュレーションで「その額に届くには何個売るか」を
+  // 逆算する。未入力なら逆算は出さず、損益分岐点（トントン）だけを見せる
+  targetProfit: integer("target_profit"),
   ownerId:     text("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   createdAt:   text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt:   text("updated_at").notNull().default(sql`(datetime('now'))`),
