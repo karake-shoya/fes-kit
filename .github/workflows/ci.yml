@@ -1,0 +1,46 @@
+name: CI
+
+# PR に緑ランプを付けるための最低限の関門。
+# ここが緑なら「型・lint・ユニットテスト・本番ビルドは通っている」ことだけが保証される。
+# 画面の見た目と操作は保証しない（それは E2E の担当）。
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run test
+
+      # next build は型チェックを兼ねるので、CI で最も多くの退行を捕まえる。
+      # ただし src/db/db.ts がモジュール読み込み時に createClient() を呼ぶため、
+      # 環境変数が無いとビルド自体が落ちる。実在しないダミー値を渡して通す。
+      # - Turso: file: スキームならローカルファイルを開くだけでネットワークに出ない
+      # - Clerk: 公開鍵は形式を解析されるため、base64 として妥当な値にしてある
+      #          （pk_test_ 以降は "ci-dummy.clerk.accounts.dev$" の base64）
+      # いずれも本物の秘密情報ではないので、Secrets に置く必要はない。
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2ktZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA==
+          CLERK_SECRET_KEY: sk_test_ci_dummy
+          CLERK_WEBHOOK_SECRET: whsec_ci_dummy
+          TURSO_DATABASE_URL: file:./ci-build.db
+          TURSO_AUTH_TOKEN: ci_dummy
+          R2_ACCOUNT_ID: ci
+          R2_ACCESS_KEY_ID: ci
+          R2_SECRET_ACCESS_KEY: ci
+          R2_BUCKET_NAME: ci
+          NEXT_PUBLIC_R2_PUBLIC_URL: https://ci.example.com
