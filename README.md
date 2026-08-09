@@ -292,8 +292,8 @@ CI では**実在しないダミー値**をワークフローに直書きして�
 ### E2E
 
 ```bash
-npx playwright test                  # 既定はローカルの dev サーバー（自動起動）
-E2E_BASE_URL=https://... npx playwright test   # Vercel のプレビューに当てる
+npm run test:e2e                              # 既定はローカルの dev サーバー（自動起動）
+E2E_BASE_URL=https://... npm run test:e2e     # Vercel のプレビューに当てる
 ```
 
 - **ブラウザは2つ併走**します。`mobile-webkit`（iPhone 13）が主で、WebKit 固有の描画差と `hasTouch` を要するスワイプ削除を見ます。
@@ -448,7 +448,7 @@ Clerk ダッシュボードで `/api/webhooks/clerk` をエンドポイントに
 | `npm run lint` | ESLint |
 | `npm run test` | Vitest（純粋ロジックのテストを1回実行） |
 | `npm run test:watch` | Vitest（監視モード） |
-| `npx playwright test` | E2E（npm script は未定義。宛先は `E2E_BASE_URL`、既定はローカル） |
+| `npm run test:e2e` | Playwright（E2E。宛先は `E2E_BASE_URL`、既定はローカルの dev サーバー） |
 | `npm run db:generate` | マイグレーション生成 |
 | `npm run db:migrate` | マイグレーション適用 |
 | `npm run db:studio` | Drizzle Studio 起動 |
