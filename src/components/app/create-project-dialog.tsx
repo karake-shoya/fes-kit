@@ -35,7 +35,7 @@ export function CreateProjectDialog() {
         <Input
           id="name"
           name="name"
-          placeholder="例：文化祭2025 焼きそば屋台"
+          placeholder="例：秋の収穫祭 焼きそば"
           required
           autoFocus
         />

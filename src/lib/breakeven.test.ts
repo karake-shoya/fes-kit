@@ -149,6 +149,68 @@ describe("calcBreakeven", () => {
   });
 });
 
+describe("calcBreakeven（目標利益からの逆算）", () => {
+  it("目標利益0は損益分岐点と完全に一致する", () => {
+    // 損益分岐は「目標利益0円のケース」として同じ関数を再利用している。
+    // 一致が崩れたら、逆算を足したときに分岐点側を壊したということ
+    expect(calcBreakeven([recipe()], 5000, 0)).toEqual(calcBreakeven([recipe()], 5000));
+  });
+
+  it("目標利益のぶんだけ多く売る個数を返す", () => {
+    // 利益200円/個、固定費5000円 + 目標5000円 = 10000円 → 50個
+    const result = calcBreakeven([recipe()], 5000, 5000);
+
+    expect(result.status).toBe("ok");
+    expect(result.totalQuantity).toBe(50);
+    expect(result.profit).toBe(5000);
+    expect(result.targetProfit).toBe(5000);
+  });
+
+  it("かかるお金が0でも目標利益から逆算できる", () => {
+    // 回収すべき額は「固定費 + 目標利益」なので、固定費0でも目標があれば解ける。
+    // 固定費だけで判定していると、目標を入れているのに「かかるお金を登録して」の案内へ落ちる
+    const result = calcBreakeven([recipe()], 0, 4000);
+
+    expect(result.status).toBe("ok");
+    expect(result.totalQuantity).toBe(20);
+    expect(result.profit).toBe(4000);
+  });
+
+  it("1個あたり利益にNaNが混ざったら解なしとして扱う", () => {
+    // NaN との比較は常に false になるため `<= 0` のガードは素通りし、
+    // Math.ceil(x / NaN) = NaN が個数として画面に出る
+    const result = calcBreakeven([recipe({ sellingPrice: NaN })], 5000, 5000);
+
+    expect(result.status).toBe("unprofitable");
+    expect(result.totalQuantity).toBe(0);
+  });
+
+  it("赤字商品が混ざっていても、切り上げ後の利益が目標を下回らない", () => {
+    // 切り上げは赤字商品の個数も増やす方向に働くので、
+    // 補正の停止条件を0のままにすると「目標達成」と言いながら未達の個数を返す
+    const result = calcBreakeven(
+      [
+        recipe({ sellingPrice: 300, unitCost: 200, servings: 95 }),
+        recipe({ recipeId: "r-2", name: "特製セット", sellingPrice: 100, unitCost: 600, servings: 5 }),
+      ],
+      200,
+      1000
+    );
+
+    expect(result.status).toBe("ok");
+    expect(result.profit).toBeGreaterThanOrEqual(1000);
+  });
+
+  it("1個あたり利益が0以下なら目標利益を入れても解なし", () => {
+    expect(calcBreakeven([recipe({ sellingPrice: 100 })], 5000, 5000).status).toBe("unprofitable");
+    expect(calcBreakeven([recipe({ sellingPrice: 80 })], 0, 5000).status).toBe("unprofitable");
+  });
+
+  it("計算できる商品が無ければ、目標利益があっても商品なしとして扱う", () => {
+    expect(calcBreakeven([], 0, 5000).status).toBe("noRecipes");
+  });
+});
+
 describe("calcScenarioProfit", () => {
   it("好きな価格・個数を当てはめたときの利益を計算する", () => {
     // (300-100)×30 + (200-100)×20 = 8000円、固定費5000円 → 3000円

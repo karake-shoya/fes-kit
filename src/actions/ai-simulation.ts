@@ -104,7 +104,7 @@ export async function suggestSimulation(projectId: string): Promise<SimulationAd
   const expenseLines = input.expenses.map((e) => `- ${e.label}：${formatYen(e.amount)}`);
 
   const prompt = [
-    "あなたは学園祭・イベントの模擬店の採算づくりを手伝うアドバイザーです。",
+    "あなたはイベント・マルシェ・お祭りなどのフード出店の採算づくりを手伝うアドバイザーです。",
     "この出店全体について、商品ごとの「販売価格」と「売れると見込む個数」を提案してください。",
     "",
     ...projectLines,

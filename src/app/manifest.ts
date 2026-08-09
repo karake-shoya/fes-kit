@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'FesKit',
     short_name: 'FesKit',
-    description: '模擬店出店管理アプリ',
+    description: '出店の採算管理アプリ',
     start_url: '/dashboard',
     display: 'standalone',
     orientation: 'portrait',

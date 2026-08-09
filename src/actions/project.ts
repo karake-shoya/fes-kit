@@ -43,6 +43,7 @@ export async function updateProject(projectId: string, formData: FormData) {
   const description = (formData.get("description") as string | null)?.trim() || null;
   const eventDate   = (formData.get("eventDate") as string | null)?.trim() || null;
   const visitorsRaw = (formData.get("expectedVisitors") as string | null)?.trim() ?? "";
+  const targetRaw   = (formData.get("targetProfit") as string | null)?.trim() ?? "";
 
   if (!name) throw new Error("プロジェクト名は必須です");
 
@@ -51,9 +52,21 @@ export async function updateProject(projectId: string, formData: FormData) {
     ? null
     : parseNonNegativeInt(visitorsRaw, "想定来場者数");
 
+  // 目標利益も任意。未入力なら null に戻し、逆算を出さずトントンだけを見せる
+  const targetProfit = targetRaw === ""
+    ? null
+    : parseNonNegativeInt(targetRaw, "目標の手残り");
+
   await db
     .update(projects)
-    .set({ name, description, eventDate, expectedVisitors, updatedAt: new Date().toISOString() })
+    .set({
+      name,
+      description,
+      eventDate,
+      expectedVisitors,
+      targetProfit,
+      updatedAt: new Date().toISOString(),
+    })
     .where(eq(projects.id, projectId));
 
   revalidateProject(projectId, "project");

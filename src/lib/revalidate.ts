@@ -27,7 +27,7 @@ type Screen =
 
 // データ → 影響を受ける画面
 const AFFECTED_SCREENS: Record<ProjectData, Screen[]> = {
-  // 想定来場者数は採算シミュレーションの購入率判定に効く
+  // 想定来場者数は採算シミュレーションの購入率判定に、目標の手残りは同画面の逆算に効く
   project:     ["home", "settings", "simulation"],
   // 材料の単価・購入数量はレシピの原価、買い出しの必要量、実績の利益にそのまま効く
   ingredients: ["ingredients", "recipes", "recipeDetail", "shoppingList", "results", "home", "simulation"],

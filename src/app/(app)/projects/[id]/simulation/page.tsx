@@ -18,6 +18,7 @@ import { PageMain, EmptyState } from "@/components/app/page-shell";
 import { ScenarioDialog } from "@/components/app/scenario-dialog";
 import { ScenarioCard } from "@/components/app/scenario-card";
 import { ScenarioCompareTable } from "@/components/app/scenario-compare-table";
+import { TargetProfitRow } from "@/components/app/target-profit-row";
 import { AiSimulationPanel } from "@/components/app/ai-simulation-panel";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +52,12 @@ export default async function SimulationPage({
   const result = calcBreakeven(input.recipes, input.fixedCost);
   const purchaseRate = calcPurchaseRate(result.totalQuantity, input.expectedVisitors);
 
+  // 「トントン」の先＝目標の手残りに届く個数。未入力なら逆算そのものを出さない
+  // （想定来場者数が未入力なら購入率を出さないのと同じ方針）
+  const target = input.targetProfit
+    ? calcBreakeven(input.recipes, input.fixedCost, input.targetProfit)
+    : null;
+
   // 「今の作る予定数を全部売り切ったらいくら残るか」（＝いま立てている計画の答え合わせ）
   const plan = calcScenarioProfit(
     result.lines.map((l) => ({
@@ -76,6 +83,8 @@ export default async function SimulationPage({
         ) : (
           <>
             <BreakevenHero projectId={id} result={result} />
+
+            <TargetProfitRow target={target} breakeven={result} />
 
             <VisitorCheck
               projectId={id}
