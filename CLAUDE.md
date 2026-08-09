@@ -51,12 +51,8 @@
 
 ## poporu（秘書ポポルの記憶）へのポインタ
 
-🔴 **2026-08-09 から、このリポの作業は poporu ではなく「このリポ」で `claude` を起動する。** 並列セッションが poporu の作業ツリーを共有すると `git add` が他セッションの途中編集を巻き込み、書いたものが黙って消えるため（2026-08-08 に2回発生）。設計は `~/poporu/plans/秘書AIアーキテクチャの再設計.md`。
+🔴 **このリポの作業は poporu ではなく「このリポ」で `claude` を起動する**（並列セッションが poporu の作業ツリーを共有すると `git add` が他セッションの編集を巻き込むため）。設計は `~/poporu/plans/秘書AIアーキテクチャの再設計.md`。
 
-- **poporu 側にこのリポ専用のメモリは無い。** 進捗・設計・調査の正は**このリポの `.claude/docs/`**。
-- Monthly Ship（月1で稼ぐ仕組みごと出す取り組み）としての位置づけ・採算の方針は `~/poporu/memory/private/monthly-ship.md`。
-- 領域名は `feskit` を使う。
-- 🔴 **作業を終えたら `~/poporu/journal/YYYY-MM-DD/HHMM-<領域>-<slug>.md` を1ファイル書く。** 1エントリ1ファイル（同時追記で記録が消えるのを防ぐ形）・**事実だけ書き解釈は書かない**・`git add -A` と `git add .` は使わない・**NEXT.md は触らない**（夜の締めルーチンが journal から拾う）。正はグローバル `~/.claude/CLAUDE.md` の「薄いポポル」節。
-- **poporu の記憶を全読みはしない。** 上のポインタ先だけ読む（読み込み量を増やさないため）。
-- 一次資料・調査ログ・成果物の実体は**このリポの `.claude/docs/`** に置く。poporu へ実体を持ち込まない（境界ルール）。
-- スマホから触るときは claude.ai / Claude アプリで **`poporu` とこのリポの2つを選ぶ**（クラウドは `~/.claude/` を読まないため、poporu を載せないと記憶も義務も効かない）。
+- **poporu 側に専用メモリは無い。** 進捗・設計・調査の正は**このリポの `.claude/docs/`**。Monthly Ship としての位置づけ・採算の方針は `~/poporu/memory/private/monthly-ship.md`。
+- **journal の領域名**: `feskit`
+- 🔴 **作業を終えたら poporu の当日 journal へ1ファイル書く。書式と規則の正はグローバル `~/.claude/CLAUDE.md` の「薄いポポル」節。** ここには写さない（写すと腐る）。⚠ **スマホ（クラウド）では `~/.claude/` が読まれないので、`poporu` も一緒に選ぶ**（そのときの正は `poporu/CLAUDE.md` の横断メカニズム8）。
