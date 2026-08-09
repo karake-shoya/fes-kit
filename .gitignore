@@ -40,7 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.claude
+.claude/settings.local.json
+.claude/worktrees/
 
 # playwright
 /test-results
