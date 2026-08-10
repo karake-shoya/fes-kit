@@ -23,7 +23,7 @@
 | ユニットテスト | Vitest | 原価計算・入力パース・買い出し積算・損益分岐点など、DB非依存の純粋ロジックのみ |
 | E2Eテスト | Playwright + `@clerk/testing` | iPhone 13（WebKit）と Desktop Chrome の2プロジェクトで実行（後述） |
 | CI | GitHub Actions | PR と main への push で lint / test / build を実行（後述） |
-| ランタイム | Node.js v22 LTS（v20以上必須） | CI は Node 24 で実行 |
+| ランタイム | Node.js v24 LTS | `.nvmrc` と `package.json` の `engines` で固定。CI・Vercel も 24 |
 
 ### Next.js 16の注意点
 
