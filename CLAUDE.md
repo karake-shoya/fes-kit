@@ -29,7 +29,7 @@
 | ORM | Drizzle ORM | |
 | Storage | Cloudflare R2 | 試作写真のみ（MVP後でも可） |
 | デプロイ | Vercel | |
-| Node.js | v22 LTS | v20以上必須 |
+| Node.js | v24 LTS | `.nvmrc` と `engines` で固定。CI・Vercel も 24。**22 以下では `npm ci` が落ちる**（lock が npm 11 生成のため） |
 
 ### Next.js 16の注意点
 
