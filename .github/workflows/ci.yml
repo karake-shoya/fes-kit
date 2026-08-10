@@ -14,9 +14,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node の版は .nvmrc が正。ここに数字を書くと、上げたときに CI だけ古い版へ
+      # 取り残される。Vercel は package.json の engines を見て新版でビルドするため、
+      # 新しい Node でしか出ない不具合が CI 緑のまま本番へ出てしまう
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: .nvmrc
           cache: npm
 
       - run: npm ci
