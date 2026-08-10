@@ -12,8 +12,9 @@ export const AVATAR_FALLBACK_CLASS =
 // メンバー1人分のアバター丸（画像がなければ名前/メールの頭文字）
 export function MemberAvatar({ name, email, avatarUrl, className = "" }: Props) {
   if (avatarUrl) {
-    // eslint-disable-next-line @next/next/no-img-element
     return (
+      // Clerk のアバターは外部ホスト。next/image を通す価値が薄いので img のままにする
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={avatarUrl}
         alt=""

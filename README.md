@@ -348,10 +348,12 @@ src/
 └── proxy.ts        Clerk ミドルウェア（公開ルート以外を保護）
 
 e2e/                Playwright の E2E（global.setup.ts でClerk Testing Tokenを取得）
-docs/               設計・調査の記録（版管理される。`.claude/` は gitignore 済みなので置かない）
+docs/               設計・調査の記録
 drizzle/            生成されたマイグレーション
 public/             静的ファイル（マスコット画像等）
 .github/workflows/  CI 定義
+.claude/docs/       TODO.md（次セッションでやること）。版管理される
+                    gitignore するのは settings.local.json と worktrees/ の2つだけ
 ```
 
 ### 機能を足すときの作法
