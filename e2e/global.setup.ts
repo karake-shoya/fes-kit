@@ -56,7 +56,7 @@ export default async function globalSetup(config: FullConfig) {
       ),
     );
 
-    const client = createClient({ url: E2E_DB_URL });
+    const client = createClient({ url: E2E_DB_URL, timeout: 10_000 });
     try {
       await migrate(drizzle(client), { migrationsFolder: MIGRATIONS_DIR });
 

@@ -97,7 +97,7 @@ test.describe("読み取りだけで判定できる項目", () => {
       name: `①1 ${testInfo.project.name}`,
       // 材料を多めに入れて、材料画面の描画を重くする。
       // スケルトンが出ている時間が延びて、確実に掴めるようにするため。
-      recipes: Array.from({ length: 30 }, (_, i) => ({
+      recipes: Array.from({ length: 12 }, (_, i) => ({
         name: `クレープ${i}`,
         sellingPrice: 450,
         servings: 60,
