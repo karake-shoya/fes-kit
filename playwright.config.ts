@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import {
+  AI_STUB_PORT,
+  AI_STUB_URL,
   AUTH_STATE_PATH,
   ENV_LOCAL_PATH,
   E2E_DB_URL,
@@ -86,23 +88,39 @@ export default defineConfig({
   // プレビューを相手にするときは既にデプロイ済みなので起動しない。
   ...(isLocal
     ? {
-        webServer: {
-          command: `npm run dev -- -p ${new URL(baseURL).port}`,
-          url: baseURL,
-          // 🔴 再利用しない。既に上がっているサーバーが本番DBを見ている可能性があり、
-          // 「拾ってしまったら壊れる」形を残さない。
-          reuseExistingServer: false,
-          timeout: 120_000,
-          // Next.js は既に process.env にある変数を .env.local で上書きしないので
-          // （@next/env の processEnv は未定義のキーにしか代入しない）、
-          // ここで渡した値が .env.local より優先される。.env.local は触らない。
-          env: {
-            TURSO_DATABASE_URL: E2E_DB_URL,
-            TURSO_AUTH_TOKEN: "",
-            // 埋め込みレプリカは常駐サーバー向けの仕組みで、file: DB とは併用しない。
-            TURSO_REPLICA_PATH: "",
+        webServer: [
+          // AI の相手役。dev サーバーより先に上げる（Playwright は順に起動する）。
+          {
+            command: "node e2e/ai-stub.mjs",
+            url: `${AI_STUB_URL}/health`,
+            reuseExistingServer: false,
+            timeout: 30_000,
+            env: { AI_STUB_PORT: String(AI_STUB_PORT) },
+            // 既定では webServer の出力は捨てられる。AI_STUB_DEBUG=1 のときだけ
+            // 中身を見たいので、受け口を開けておく（スタブは既定では何も出さない）。
+            stdout: "pipe",
           },
-        },
+          {
+            command: `npm run dev -- -p ${new URL(baseURL).port}`,
+            url: baseURL,
+            // 🔴 再利用しない。既に上がっているサーバーが本番DBを見ている可能性があり、
+            // 「拾ってしまったら壊れる」形を残さない。
+            reuseExistingServer: false,
+            timeout: 120_000,
+            // Next.js は既に process.env にある変数を .env.local で上書きしないので
+            // （@next/env の processEnv は未定義のキーにしか代入しない）、
+            // ここで渡した値が .env.local より優先される。.env.local は触らない。
+            env: {
+              TURSO_DATABASE_URL: E2E_DB_URL,
+              TURSO_AUTH_TOKEN: "",
+              // 埋め込みレプリカは常駐サーバー向けの仕組みで、file: DB とは併用しない。
+              TURSO_REPLICA_PATH: "",
+              // 🔴 本物の Claude API を叩かせない。E2E が課金と応答のゆらぎを持ち込むのを防ぐ。
+              ANTHROPIC_BASE_URL: `${AI_STUB_URL}/v1`,
+              ANTHROPIC_API_KEY: "sk-ant-e2e-stub",
+            },
+          },
+        ],
       }
     : {}),
 });

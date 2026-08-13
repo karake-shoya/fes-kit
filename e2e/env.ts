@@ -41,6 +41,13 @@ export function getTestUserEmail(): string | undefined {
   return process.env.E2E_CLERK_USER_EMAIL || undefined;
 }
 
+// AI 採算診断の相手役（e2e/ai-stub.mjs）。
+// AI 呼び出しは Server Action の中で起きるのでブラウザ側では捕まえられない。
+// @ai-sdk/anthropic の既定プロバイダが読む ANTHROPIC_BASE_URL をここへ向け、
+// アプリのコードを変えずに差し替える。
+export const AI_STUB_PORT = 3457;
+export const AI_STUB_URL = `http://localhost:${AI_STUB_PORT}`;
+
 /** ローカルの dev サーバーが相手か（プレビューに当てるときは false）。 */
 export function isLocalTarget(baseURL: string): boolean {
   return baseURL.startsWith("http://localhost") || baseURL.startsWith("http://127.0.0.1");

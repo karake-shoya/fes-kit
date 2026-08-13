@@ -337,8 +337,30 @@ E2E_BASE_URL=https://... npm run test:e2e     # Vercel のプレビューに当�
 Clerk は localhost では CAPTCHA を出さないため**ローカルでは通り、プレビューに当てて初めて表面化します**。
 Testing Token を外さないでください。
 
-実機確認25項目のうち何を E2E が肩代わりできるかの仕分けは
-[`docs/2026-08-08_実機確認25項目の仕分け.md`](docs/2026-08-08_実機確認25項目の仕分け.md) にあります（A:20件 / B:5件 / C:0件）。
+### AI採算診断の相手役（スタブ）
+
+**E2E は本物の Claude API を叩きません。** 課金と応答のゆらぎをテストに持ち込まないためです。
+
+AI 呼び出しは Server Action（`src/actions/ai-simulation.ts`）の中で起きるので、
+ブラウザ側の `page.route` では捕まえられません。代わりに `e2e/ai-stub.mjs` を立て、
+dev サーバーの `ANTHROPIC_BASE_URL` をそこへ向けています。
+`@ai-sdk/anthropic` の既定プロバイダがこの環境変数を読むので、**アプリのコードは1行も変えていません**。
+
+テストは `POST /__set` で「次に返す提案」を差し込みます。赤字の提案を返させて
+サーバー側の警告表示を固定できるのが、実APIには無い利点です
+（2026-07-29 の実測で、実APIは赤字案を前向きな文章付きで返すことが分かっています）。
+
+⚠ **プロンプトを変えたときは実APIで1回試してください。** スタブは応答の形しか保証しません。
+
+### E2E が守っている範囲
+
+実機確認25項目は 2026-08-13 に全件 E2E へ移しました（`npm run test:e2e` = 61 passed）。
+対応表は [`.claude/docs/TODO.md`](.claude/docs/TODO.md)、仕分けの経緯は
+[`docs/2026-08-08_実機確認25項目の仕分け.md`](docs/2026-08-08_実機確認25項目の仕分け.md)。
+
+**E2E はブラウザエンジンであって実機ではありません。** iOS Safari 固有の描画差は残るので、
+**見た目は初回だけ実機で見て、以後の回帰を E2E が守る**という分担にしています。
+実機で一度だけ見る項目は TODO.md に列挙しています。
 
 ---
 
@@ -367,9 +389,11 @@ src/
 │                   *.test.ts が隣に並ぶ（純粋ロジックのみ）
 └── proxy.ts        Clerk ミドルウェア（公開ルート以外を保護）
 
-e2e/                Playwright の E2E
-│                   env.ts（config と setup が共有する設定）／global.setup.ts
-│                   （Testing Token取得・専用DB作成・サインインstate保存）
+e2e/                Playwright の E2E（実機確認25項目をここが肩代わりする）
+│                   env.ts（config と setup が共有する設定）
+│                   global.setup.ts（Testing Token取得・専用DB作成・サインインstate保存）
+│                   ai-stub.mjs（Claude APIの相手役。本物は叩かない）
+│                   helpers/（seed.ts＝下ごしらえ、swipe.ts＝タッチ合成）
 docs/               設計・調査の記録
 drizzle/            生成されたマイグレーション
 public/             静的ファイル（マスコット画像等）
