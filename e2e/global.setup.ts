@@ -59,6 +59,13 @@ export default async function globalSetup(config: FullConfig) {
     const client = createClient({ url: E2E_DB_URL });
     try {
       await migrate(drizzle(client), { migrationsFolder: MIGRATIONS_DIR });
+
+      // WAL に切り替える。既定のロールバックジャーナルだと、読み手が居るあいだ
+      // 書き手が締め出される。E2E は4ワーカー × dev サーバーが同じファイルを
+      // 同時に触るので、これが無いと seed が SQLITE_BUSY で落ちる。
+      // journal_mode はDBファイルに保存されるので、ここで1回設定すれば
+      // dev サーバー側の接続にも効く。
+      await client.execute("PRAGMA journal_mode = WAL");
     } finally {
       client.close();
     }
