@@ -25,6 +25,14 @@ const syncInterval = process.env.TURSO_SYNC_INTERVAL
   ? Number(process.env.TURSO_SYNC_INTERVAL)
   : 60;
 
+// ロック待ちの上限（ミリ秒）。
+//
+// ローカルの SQLite ファイル（file: / 埋め込みレプリカ）を相手にするときだけ効き、
+// リモートの Turso では無視される。既定は0＝待たずに即 SQLITE_BUSY で落ちる。
+// E2E は dev サーバーとテストの seed が同じファイルへ同時に書くので、
+// これが無いと Server Action が「保存できませんでした」で落ちる。
+const BUSY_TIMEOUT_MS = 10_000;
+
 function createDbClient(): Client {
   // Embedded Replica モード:
   //   読み取りはローカルレプリカから（高速）、書き込みはプライマリへ転送し pull で反映。
@@ -35,6 +43,7 @@ function createDbClient(): Client {
       syncUrl,
       authToken,
       syncInterval,
+      timeout: BUSY_TIMEOUT_MS,
     });
   }
 
@@ -42,6 +51,7 @@ function createDbClient(): Client {
   return createClient({
     url: syncUrl,
     authToken,
+    timeout: BUSY_TIMEOUT_MS,
   });
 }
 

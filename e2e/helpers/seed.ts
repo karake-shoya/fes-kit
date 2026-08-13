@@ -8,6 +8,7 @@ import {
   projects,
   recipeIngredients,
   recipes,
+  salesRecords,
   simulationItems,
   simulationScenarios,
   users,
@@ -52,8 +53,18 @@ type SeedOptions = {
   eventDate?: string;
   expectedVisitors?: number;
   targetProfit?: number;
-  /** 商品。原価を持たせたいときは ingredient を添える */
-  recipes?: { name: string; sellingPrice: number; servings: number; unitCost?: number }[];
+  /**
+   * 商品。原価を持たせたいときは unitCost を添える。
+   * made / sold を書くと当日の実績records も一緒に入る。
+   */
+  recipes?: {
+    name: string;
+    sellingPrice: number;
+    servings: number;
+    unitCost?: number;
+    made?: number;
+    sold?: number;
+  }[];
   /** かかるお金（固定費） */
   expenses?: { label: string; amount: number }[];
   /** 採算パターン。items は recipes と同じ並びで対応させる */
@@ -74,15 +85,12 @@ export type SeededProject = {
  */
 export async function seedProject(options: SeedOptions): Promise<SeededProject> {
   const userId = getSignedInUserId();
-  const client = createClient({ url: E2E_DB_URL });
+  // timeout はロック待ちの上限（ミリ秒）。ワーカーが4本並走するので、
+  // これが無いと後から来た seed が即 SQLITE_BUSY で落ちる（WAL でも書き手は1度に1つ）。
+  const client = createClient({ url: E2E_DB_URL, timeout: 10_000 });
   const db = drizzle(client);
 
   try {
-    // 書き込みが競合したとき即座に諦めず待つ。ワーカーが4本並走するので、
-    // これが無いと後から来た seed が SQLITE_BUSY で落ちる
-    // （WAL でも書き手は1度に1つ）。
-    await client.execute("PRAGMA busy_timeout = 10000");
-
     // users は Webhook 未着でもアプリ側の requireUser() が UPSERT するが、
     // projects.owner_id の FK を通すためにここで先に入れておく。
     await db
@@ -105,44 +113,79 @@ export async function seedProject(options: SeedOptions): Promise<SeededProject> 
       .insert(projectMembers)
       .values({ projectId: project.id, userId, role: "owner" });
 
-    const recipeIds: string[] = [];
-    for (const r of options.recipes ?? []) {
-      const [recipe] = await db
-        .insert(recipes)
-        .values({
+    // 🔴 まとめて1文で入れる。1行ずつ INSERT すると書き込み回数が商品数だけ増え、
+    // 4ワーカーが同じSQLiteファイルを取り合って全体が詰まる（実測で顕在化した）。
+    const recipeList = options.recipes ?? [];
+    // 🔴 ID はこちらで採番する。まとめINSERT の RETURNING が入力と同じ並びで
+    // 返る保証は無く、順序が入れ替わると「商品Aの原価に商品Bの材料が付く」
+    // 「パターンの値段が別の商品に入る」といった、テストが通ったまま
+    // 間違った前提で検証する事故になる。
+    const recipeIds = recipeList.map(() => crypto.randomUUID());
+
+    if (recipeList.length > 0) {
+      await db.insert(recipes).values(
+        recipeList.map((r, i) => ({
+          id: recipeIds[i],
           projectId: project.id,
           name: r.name,
           sellingPrice: r.sellingPrice,
           servings: r.servings,
-        })
-        .returning();
-      recipeIds.push(recipe.id);
+        })),
+      );
 
       // 原価は「1個ぶんの材料費」を材料1件で表す。
       // 購入数量を1にしておけば、単価がそのまま1個あたりの原価になる。
-      if (r.unitCost !== undefined) {
-        const [ingredient] = await db
-          .insert(ingredients)
-          .values({
+      const withCost = recipeList
+        .map((r, i) => ({ r, recipeId: recipeIds[i], ingredientId: crypto.randomUUID() }))
+        .filter(({ r }) => r.unitCost !== undefined);
+
+      if (withCost.length > 0) {
+        await db.insert(ingredients).values(
+          withCost.map(({ r, ingredientId }) => ({
+            id: ingredientId,
             projectId: project.id,
             name: `${r.name}の材料`,
-            price: r.unitCost,
+            price: r.unitCost!,
             unit: "個",
             quantity: 1,
-          })
-          .returning();
-        await db.insert(recipeIngredients).values({
-          recipeId: recipe.id,
-          ingredientId: ingredient.id,
-          quantityUsed: 1,
-        });
+          })),
+        );
+
+        await db.insert(recipeIngredients).values(
+          withCost.map(({ recipeId, ingredientId }) => ({
+            recipeId,
+            ingredientId,
+            quantityUsed: 1,
+          })),
+        );
       }
     }
 
-    for (const e of options.expenses ?? []) {
-      await db
-        .insert(projectExpenses)
-        .values({ projectId: project.id, label: e.label, amount: e.amount });
+    // 当日の実績（作った数・売れた数）。
+    // 画面から入力する経路は別の項目で見る。ここは「入っている実績から
+    // サマリーの数字が正しく出るか」を見たいときのための下ごしらえ。
+    const salesRows = recipeList
+      .map((r, i) => ({ r, recipeId: recipeIds[i] }))
+      .filter(({ r }) => r.made !== undefined || r.sold !== undefined);
+    if (salesRows.length > 0) {
+      await db.insert(salesRecords).values(
+        salesRows.map(({ r, recipeId }) => ({
+          recipeId,
+          madeCount: r.made ?? 0,
+          soldCount: r.sold ?? 0,
+        })),
+      );
+    }
+
+    const expenseList = options.expenses ?? [];
+    if (expenseList.length > 0) {
+      await db.insert(projectExpenses).values(
+        expenseList.map((e) => ({
+          projectId: project.id,
+          label: e.label,
+          amount: e.amount,
+        })),
+      );
     }
 
     for (const s of options.scenarios ?? []) {
