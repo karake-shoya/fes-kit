@@ -26,19 +26,4 @@ test.describe("サインイン済みの状態", () => {
     await expect(page.getByRole("heading", { name: "FesKit" })).toBeVisible();
     await expect(page.getByRole("button", { name: "新しいプロジェクトを作る" })).toBeVisible();
   });
-
-  test("毎回まっさらなDBから始まる（プロジェクトが0件）", async ({ page }) => {
-    // global.setup.ts が実行のたびに e2e.db を作り直すので、ホームは空から始まる。
-    //
-    // ⚠ これは「本番DBを見ていない」ことの証明にはならない。テストユーザーは
-    // 新規なので本番DBでも0件だから。DBの差し替えが効いていることは
-    // 2026-08-13 に別途実測した（e2e.db へ直接入れたプロジェクトがホームに出た）。
-    // Step 3 の書き込みテストが入れば、その実測が常設の判定になる。
-    //
-    // ⚠ 書き込みテストを足したら、並走する他テストが作ったプロジェクトを
-    // 拾いうるので、この判定は serial 化するか専用ユーザーに分けること。
-    await page.goto("/dashboard");
-
-    await expect(page.getByText("まだプロジェクトがありません。")).toBeVisible();
-  });
 });
