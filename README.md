@@ -23,7 +23,7 @@
 | ユニットテスト | Vitest | 原価計算・入力パース・買い出し積算・損益分岐点など、DB非依存の純粋ロジックのみ |
 | E2Eテスト | Playwright + `@clerk/testing` | iPhone 13（WebKit）と Desktop Chrome の2プロジェクトで実行（後述） |
 | CI | GitHub Actions | PR と main への push で lint / test / build を実行（後述） |
-| ランタイム | Node.js v22 LTS（v20以上必須） | CI は Node 24 で実行 |
+| ランタイム | Node.js v24 LTS | `.nvmrc` と `package.json` の `engines` で固定。CI・Vercel も 24 |
 
 ### Next.js 16の注意点
 
@@ -370,10 +370,12 @@ src/
 e2e/                Playwright の E2E
 │                   env.ts（config と setup が共有する設定）／global.setup.ts
 │                   （Testing Token取得・専用DB作成・サインインstate保存）
-docs/               設計・調査の記録（版管理される。`.claude/` は gitignore 済みなので置かない）
+docs/               設計・調査の記録
 drizzle/            生成されたマイグレーション
 public/             静的ファイル（マスコット画像等）
 .github/workflows/  CI 定義
+.claude/docs/       TODO.md（次セッションでやること）。版管理される
+                    gitignore するのは settings.local.json と worktrees/ の2つだけ
 ```
 
 ### 機能を足すときの作法

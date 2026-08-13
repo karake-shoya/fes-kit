@@ -29,7 +29,7 @@
 | ORM | Drizzle ORM | |
 | Storage | Cloudflare R2 | 試作写真のみ（MVP後でも可） |
 | デプロイ | Vercel | |
-| Node.js | v22 LTS | v20以上必須 |
+| Node.js | v24 LTS | `.nvmrc` と `engines` で固定。CI・Vercel も 24。**22 以下では `npm ci` が落ちる**（lock が npm 11 生成のため） |
 
 ### Next.js 16の注意点
 
@@ -53,6 +53,6 @@
 
 🔴 **このリポの作業は poporu ではなく「このリポ」で `claude` を起動する**（並列セッションが poporu の作業ツリーを共有すると `git add` が他セッションの編集を巻き込むため）。設計は `~/poporu/plans/秘書AIアーキテクチャの再設計.md`。
 
-- **poporu 側に専用メモリは無い。** 進捗・設計・調査の正は**このリポの `.claude/docs/`**。Monthly Ship としての位置づけ・採算の方針は `~/poporu/memory/private/monthly-ship.md`。
+- **poporu 側に専用メモリは無い。** 正は**このリポ**にあり、2箇所に分かれる。**次セッションでやること＝`.claude/docs/TODO.md`**、**設計・調査の記録＝リポ直下の `docs/`**。Monthly Ship としての位置づけ・採算の方針は `~/poporu/memory/private/monthly-ship.md`。
 - **journal の領域名**: `feskit`
 - 🔴 **作業を終えたら poporu の当日 journal へ1ファイル書く。書式と規則の正はグローバル `~/.claude/CLAUDE.md` の「薄いポポル」節。** ここには写さない（写すと腐る）。⚠ **スマホ（クラウド）では `~/.claude/` が読まれないので、`poporu` も一緒に選ぶ**（そのときの正は `poporu/CLAUDE.md` の横断メカニズム8）。
