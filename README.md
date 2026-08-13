@@ -292,7 +292,7 @@ CI では**実在しないダミー値**をワークフローに直書きして�
 ### E2E
 
 ```bash
-npm run test:e2e                              # 既定はローカルの dev サーバー（自動起動）
+npm run test:e2e                              # 既定：専用ポート（3456）の dev サーバーを自動起動
 E2E_BASE_URL=https://... npm run test:e2e     # Vercel のプレビューに当てる
 ```
 
@@ -305,13 +305,33 @@ E2E_BASE_URL=https://... npm run test:e2e     # Vercel のプレビューに当�
   プレビューに当てるときは `VERCEL_AUTOMATION_BYPASS_SECRET` が必須で、無いと1リクエストも通りません。
 - 鍵は `.env.local` から読みます（`process.loadEnvFile`）。実行のたびに `export` する必要はありません。
 
-### 現在のスコープ：読み取りのみ
+### 🔴 E2E は本番DBを絶対に見ない
 
-`e2e/smoke.spec.ts` はトップページとサインイン画面の表示だけを見ます。**データを1件も書き換えません。**
+**`.env.local` の `TURSO_DATABASE_URL` は本番の Turso を指しています。** 書き込みを伴うE2E
+（採算パターンの「これにする」は `recipes` の値段と作る予定数を実際に書き換えます）を
+素のまま走らせるとパートナーの出店データを壊します。そこで2重に隔離しています。
 
-書き込みを伴うテストを足す土台は 2026-08-08 に揃いました。
-**Preview は Production と別の専用DB `fes-kit-preview`（東京・空）を見ています**（Production の環境変数は未変更）。
-本番データを汚さずに書き込みテストを足せる状態です。
+| 仕掛け | 場所 | 効き方 |
+|---|---|---|
+| dev サーバーにだけ別DBを渡す | `playwright.config.ts` の `webServer.env` | `TURSO_DATABASE_URL=file:./e2e.db`。**Next.js は既に `process.env` にある変数を `.env.local` で上書きしない**（`@next/env` の `processEnv` は未定義のキーにしか代入しない）ので、`.env.local` を書き換えずに差し替わります |
+| 既存サーバーを再利用しない | `playwright.config.ts` の `reuseExistingServer: false` ＋ 専用ポート 3456 | 普段の開発で 3000 に上げている dev サーバー（＝本番DBを見る）を拾ってしまう事故を塞ぎます |
+
+`e2e.db` は実行のたびに**削除して作り直します**（`e2e/global.setup.ts`）。前回の残骸が残ると
+「◯個売ればトントン」のような数値の一致検証が前回のデータ次第で揺れるためです。
+スキーマは `drizzle-orm/libsql/migrator` で `drizzle/` をそのまま当てます
+（`drizzle-kit` は使いません。`drizzle.config.ts` が `dialect: "turso"` で `file:` を想定していないため）。
+
+### サインイン済みの state
+
+25項目の実機確認はすべて Clerk 認証後の画面にあります。`e2e/global.setup.ts` が
+**1回だけサインインして** `e2e/.auth/user.json` に Cookie / localStorage を保存し、
+両ブラウザのプロジェクトがそれを読みます（テストごとにサインインすると Clerk への往復が回数ぶん増えるため）。
+
+- サインインは `@clerk/testing` の `clerk.signIn({ page, emailAddress })`。**パスワードもメールのコード入力も要りません**
+  （Backend API がサインイントークンを発行する ticket 方式。`CLERK_SECRET_KEY` を使います）。
+- **`E2E_CLERK_USER_EMAIL` が未設定なら、サインインを飛ばし、認証が要るテストは `test.skip` します。**
+  鍵の無い環境で赤ランプにしないためです。
+- `e2e/smoke.spec.ts` は未サインイン前提なので、`test.use({ storageState: ... })` で state を明示的に外しています。
 
 ⚠ **ヘッドレスの chromium は素ではボット検知に弾かれます。**
 Clerk は localhost では CAPTCHA を出さないため**ローカルでは通り、プレビューに当てて初めて表面化します**。
@@ -347,7 +367,9 @@ src/
 │                   *.test.ts が隣に並ぶ（純粋ロジックのみ）
 └── proxy.ts        Clerk ミドルウェア（公開ルート以外を保護）
 
-e2e/                Playwright の E2E（global.setup.ts でClerk Testing Tokenを取得）
+e2e/                Playwright の E2E
+│                   env.ts（config と setup が共有する設定）／global.setup.ts
+│                   （Testing Token取得・専用DB作成・サインインstate保存）
 docs/               設計・調査の記録（版管理される。`.claude/` は gitignore 済みなので置かない）
 drizzle/            生成されたマイグレーション
 public/             静的ファイル（マスコット画像等）
@@ -406,12 +428,16 @@ NEXT_PUBLIC_R2_PUBLIC_URL=https://...  # バケットの公開URLベース
 ANTHROPIC_API_KEY=sk-ant-...
 
 # E2E（Playwright・任意）
-# 宛先。未設定ならローカルの dev サーバー（http://localhost:3000）を自動起動して当てる。
+# 宛先。未設定ならローカルの dev サーバー（http://localhost:3456）を専用DB付きで自動起動する。
+# ポートが埋まっているときだけ別の値を渡す。
 E2E_BASE_URL=https://fes-kit-git-<ブランチ名>-karake-shoyas-projects.vercel.app
 # Vercel のプレビューに当てるときは必須。Vercel ダッシュボードの
 # Settings → Deployment Protection → Protection Bypass for Automation で発行する。
 # これが無いと SSO に弾かれて1リクエストも通らない。
 VERCEL_AUTOMATION_BYPASS_SECRET=...
+# 認証後の画面を見るE2E用のテストユーザー。Clerk ダッシュボードで1人作る。
+# 未設定なら認証が要るテストは skip される（土台が無くても赤くならない）。
+E2E_CLERK_USER_EMAIL=e2e+clerk_test@example.com
 ```
 
 ### 3. データベースのマイグレーション

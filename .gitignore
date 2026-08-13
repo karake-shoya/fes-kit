@@ -48,3 +48,7 @@ next-env.d.ts
 /playwright-report
 /blob-report
 /playwright/.cache
+# E2E専用のローカルDB（本番Tursoを汚さないために dev サーバーへ差し替えて渡す）
+/e2e.db*
+# E2Eのサインイン済みstate（Clerkのセッションが入るので絶対にコミットしない）
+/e2e/.auth/

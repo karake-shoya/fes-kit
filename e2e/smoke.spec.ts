@@ -1,11 +1,12 @@
 import { setupClerkTestingToken } from "@clerk/testing/playwright";
 import { expect, test } from "@playwright/test";
 
-// 読み取りだけのスモーク。データを1件も書き換えない。
-//
-// なぜ読み取りだけで止めているか：
-// 書き込みを伴うテスト（③5「これにする」など）は、Preview 専用DBへの切り替えを
-// 実測で確認してから足す。詳細は docs/2026-08-08_実機確認25項目の仕分け.md を参照。
+// 未サインインの状態で見えるべきものだけを見るスモーク。データを1件も書き換えない。
+
+// 🔴 サインイン済み state を外す。
+// global.setup.ts が作った state を既定で読むようになったため、これを外さないと
+// /sign-in がホームへリダイレクトされ「フォームが出ない」で落ちる。
+test.use({ storageState: { cookies: [], origins: [] } });
 
 test("トップページが表示される", async ({ page }) => {
   const response = await page.goto("/");
