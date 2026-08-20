@@ -45,6 +45,25 @@ CI（`verify` ＝ lint / test / build）が既にあるのは feskit だけだ�
 条件が揃わなかったときは理由を1行ログに出し、**ジョブは成功で終わる**
 （「まだ揃っていない」は異常ではなく、次のイベントで再判定されるため）。
 
+### 再判定の引き金は3つ
+
+| トリガー | いつ効くか |
+|---|---|
+| `workflow_run`（CI 完了） | **本命。** ラベルが先に付いていて CI 後に判定したいとき |
+| `pull_request`（labeled / synchronize） | CI が既に緑で、後からラベルを付けたとき |
+| `check_suite`（completed） | 保険 |
+
+🔴 **`check_suite` は当てにならない。** CI の `verify` が完了しても再判定が発火せず、
+全チェック緑のまま放置された（2026-08-20 実測）。ラベルを付け直すまで動かなかった。
+`workflow_run` を足したのはこのため。
+
+### マージ後に Issue を明示的に閉じている
+
+🔴 **GitHub は `Closes #32` で紐づいた Issue を自動では閉じてくれない。**
+PR #43 をこの仕組みがマージした後、`closingIssuesReferences` には載っているのに
+Issue #32 は OPEN のまま残った（2026-08-20 実測）。
+マージ直後に GraphQL で紐づく Issue を引き、`gh issue close` している（`issues: write` が要る）。
+
 ## 止めたいとき
 
 | やりたいこと | やること |
@@ -52,7 +71,7 @@ CI（`verify` ＝ lint / test / build）が既にあるのは feskit だけだ�
 | 1件だけ止める | PR から `auto-merge` ラベルを外す |
 | 実装を止める | 走っている Actions の run を cancel し、Issue から `claude` ラベルを外す |
 | 仕組みごと止める | `gh secret delete CLAUDE_CODE_OAUTH_TOKEN -R karake-shoya/fes-kit`（実装が動かなくなる） |
-| 完全に外す | 2つのワークフローファイルを消し、`ci.yml` の `push` から `claude/**` を戻す |
+| 完全に外す | 2つのワークフローファイル（`claude-issue-to-pr.yml` / `auto-merge.yml`）を消す |
 
 ## 設計で引っかかった点
 
@@ -72,8 +91,8 @@ CI（`verify` ＝ lint / test / build）が既にあるのは feskit だけだ�
 - action ステップに `env: GH_TOKEN` を**渡さない**（Claude の Bash から叩く `gh` が
   GITHUB_TOKEN を使ってしまう）
 
-⚠ `ci.yml` の `push: claude/**` は GITHUB_TOKEN 時代の回避策で、App 導入後は不要。
-消していないのは、App の経路が安定するまでの保険として残しているため。
+⚠ `ci.yml` の `push: claude/**` は GITHUB_TOKEN 時代の回避策だったので、App 導入後に外した。
+残すと push と pull_request で `verify` が二重に走る。
 
 ### 2. ネイティブの auto-merge を使っていない
 

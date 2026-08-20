@@ -278,7 +278,7 @@ feskit の律速は着手ではなく**検証**にあります。Clerk 認証後
 
 | 層 | 何を保証するか | 鍵の要否 | 実行場所 |
 |---|---|---|---|
-| CI（`.github/workflows/ci.yml`） | 型・lint・ユニットテスト・本番ビルドが通る | 不要 | GitHub Actions（PR、main と `claude/**` への push） |
+| CI（`.github/workflows/ci.yml`） | 型・lint・ユニットテスト・本番ビルドが通る | 不要 | GitHub Actions（PR と main への push） |
 | E2E（`playwright.config.ts` + `e2e/`） | 画面が実際に表示され、操作できる | 必要 | 手元から実行（CI 未接続） |
 
 **CI は画面の見た目と操作を保証しません。** そこは E2E の担当です。

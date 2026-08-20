@@ -12,11 +12,19 @@ on:
     types: [labeled, synchronize]
   check_suite:
     types: [completed]
+  # 🔴 check_suite は当てにならない。CI の verify が完了しても再判定が発火しなかった
+  # （2026-08-20 実測。全チェック緑のまま放置され、ラベルを付け直すまで動かなかった）。
+  # CI の完了を直接受ける workflow_run が実質の本命。
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
 
 permissions:
   contents: write
   pull-requests: write
   checks: read
+  # マージ後に Closes で紐づいた Issue を閉じるのに要る。
+  issues: write
 
 jobs:
   # 🔴 ジョブ名がそのままチェック名になる。このジョブ自身も対象 PR のチェックとして現れるため、
@@ -34,13 +42,21 @@ jobs:
           EVENT: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           SUITE_PRS: ${{ toJSON(github.event.check_suite.pull_requests) }}
+          RUN_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          if [ "$EVENT" = "pull_request" ]; then
-            numbers="$PR_NUMBER"
-          else
-            numbers=$(printf '%s' "$SUITE_PRS" | jq -r '.[].number' | tr '\n' ' ')
-          fi
+          case "$EVENT" in
+            pull_request)
+              numbers="$PR_NUMBER" ;;
+            workflow_run)
+              # workflow_run はブランチ名しかくれないので、そこから open PR を引く
+              numbers=$(gh pr list --repo "$REPO" --state open --head "$RUN_BRANCH" \
+                          --json number --jq '.[].number' | tr '\n' ' ') ;;
+            *)
+              numbers=$(printf '%s' "$SUITE_PRS" | jq -r '.[].number' | tr '\n' ' ') ;;
+          esac
           echo "numbers=$numbers" >> "$GITHUB_OUTPUT"
           echo "判定対象: ${numbers:-なし}"
 
@@ -105,4 +121,16 @@ jobs:
 
             echo "PR #$n は7条件をすべて満たした。squash でマージする"
             gh pr merge "$n" --repo "$REPO" --squash --delete-branch
+
+            # 🔴 GitHub は Closes で紐づいた Issue を自動で閉じてくれない。
+            # PR #43 のマージ後、closingIssuesReferences に載っている Issue #32 が
+            # OPEN のまま残った（2026-08-20 実測）。ここで明示的に閉じる。
+            owner="${REPO%%/*}"; name="${REPO##*/}"
+            linked=$(gh api graphql -f query="{repository(owner:\"$owner\",name:\"$name\"){pullRequest(number:$n){closingIssuesReferences(first:10){nodes{number state}}}}}" \
+                       --jq '.data.repository.pullRequest.closingIssuesReferences.nodes[] | select(.state == "OPEN") | .number' 2>/dev/null || true)
+            for i in $linked; do
+              echo "Issue #$i を閉じる"
+              gh issue close "$i" --repo "$REPO" --reason completed \
+                --comment "PR #$n のマージにより自動でクローズしました。"
+            done
           done
