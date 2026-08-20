@@ -384,9 +384,10 @@ Issue に `claude` を付ける
 
 ⚠ **`auto-merge` を付けなければ PR はマージされません。** 放置は安全側に倒れます。
 
-🔴 **`ci.yml` の `push` から `claude/**` を消さないでください。**
-GITHUB_TOKEN が作った PR は `pull_request` ワークフローを発火させないため、
-この行が無いと `verify` が一度も付かず自動マージが静かに止まります。
+🔴 **実装は Claude GitHub App のトークンで動きます。** GITHUB_TOKEN が起こしたイベントは
+push も PR も一切ワークフローを発火させないため、App を外すと `verify` が付かず自動マージが
+静かに止まります（2026-08-20 実測）。ワークフローに `github_token` や `GH_TOKEN` を足すのも
+同じ理由で禁止です。
 
 マージの7条件・止め方・設計の経緯は [`.claude/docs/自動PR運用.md`](.claude/docs/自動PR運用.md)。
 
