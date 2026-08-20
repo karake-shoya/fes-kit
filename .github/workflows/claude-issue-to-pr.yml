@@ -16,15 +16,26 @@ jobs:
   implement:
     if: github.event.label.name == 'claude'
     runs-on: ubuntu-latest
-    # 暴走したときにここで止まる。claude_args による制限は入れていないので、
-    # 実行時間の上限がこの仕組み唯一のブレーキになる。
+    # 暴走したときの外側のブレーキ。内側のブレーキは claude_args の --max-turns。
     timeout-minutes: 30
     permissions:
       contents: write
       pull-requests: write
       issues: write
+      # Claude GitHub App のインストールトークンを OIDC 交換で取るために要る。
+      # 🔴 App トークンで push・PR すると CI が正常に発火する。GITHUB_TOKEN では発火しない
+      # （2026-08-20 実測。push も pull_request も両方とも発火しなかった）。
+      id-token: write
 
     steps:
+      - name: Issue の既存コメント数を数える
+        id: before
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(gh issue view "${{ github.event.issue.number }}" --repo "${{ github.repository }}" --json comments --jq '.comments | length')
+          echo "count=$n" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v4
         with:
           # ブランチを切って push するので、浅いクローンでは足りない
@@ -43,10 +54,9 @@ jobs:
           # Max プランの枠で動く。API 従量課金は発生しない代わりに Shoya の5時間ウィンドウを消費する。
           # 生成は `claude setup-token` で行い、値は Secrets にしか置かない。
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # 🔴 github_token を明示しないと、action は OIDC トークンを Claude GitHub App の
-          # トークンへ交換しようとし、`id-token: write` 権限が無いため3回リトライして失敗する
-          # （2026-08-20 の初回実行で実測）。App を入れていないので GITHUB_TOKEN を直接渡す。
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # 🔴 github_token は渡さない。渡すと action は OIDC 交換を行わず GITHUB_TOKEN を使い、
+          # その身元で push・PR した結果 CI が一度も発火しない（2026-08-20 実測）。
+          # 未指定なら Claude GitHub App のインストールトークンを取りに行く（要 id-token: write）。
           # 🔴 既定では Bash が許可されていない。指定しないと `gh issue view` も `npm run test` も
           # 拒否され、Claude は3ターンで諦めて「何もせず success」で終わる（2026-08-20 実測。
           # permission_denials_count=2）。実装には Bash・Edit・Write が要る。
@@ -90,9 +100,8 @@ jobs:
             - Issue に書かれていないことを推測で実装しない。
             - 情報が足りず実装できないときは、PR を立てずに Issue へ「何が足りないか」をコメントして終了する。
             - コミットメッセージ・コメント・PR 本文はすべて日本語。
-        env:
-          # Claude が Bash から叩く gh の認証。これが無いと `gh issue view` が失敗する。
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # 🔴 ここに GH_TOKEN を渡さない。渡すと Claude の Bash から叩く gh が GITHUB_TOKEN を
+        # 使うことになり、push した結果 CI が発火しない。App のトークンを action に任せる。
 
       # action は失敗の理由を伏せて `is_error:true` としか出さない（2026-08-20 実測）。
       # さらに悪いことに、ツールを拒否されて何もできなかった実行も success で終わる
@@ -120,6 +129,31 @@ jobs:
             echo "::error::ツールが $denials 回拒否された。claude_args の --allowedTools を見直す"
             exit 1
           fi
+
+      # この仕組みの正しい終わり方は2つしかない＝PR が立つか、Issue にコメントが付くか。
+      # どちらも起きていないのに緑で終わるのは空振りなので落とす。
+      # 5回目の実行では PR 作成が権限で失敗したのにジョブは success で終わった（2026-08-20 実測）。
+      - name: PR かコメントのどちらかが生まれたか確かめる
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          BEFORE: ${{ steps.before.outputs.count }}
+        run: |
+          set -euo pipefail
+
+          prs=$(gh pr list --repo "$REPO" --state open --json headRefName \
+                  --jq "[.[] | select(.headRefName | startswith(\"claude/issue-${ISSUE}-\"))] | length")
+          after=$(gh issue view "$ISSUE" --repo "$REPO" --json comments --jq '.comments | length')
+
+          echo "この Issue の PR: ${prs} 件 / コメント: ${BEFORE} → ${after} 件"
+
+          if [ "$prs" -gt 0 ]; then echo "PR が立っている。正常"; exit 0; fi
+          if [ "$after" -gt "$BEFORE" ]; then echo "コメントが増えている。情報不足として正常終了した扱い"; exit 0; fi
+
+          echo "::error::PR もコメントも生まれていない。空振りなので失敗にする"
+          exit 1
 
       # 実装の成否にかかわらずラベルを外す。付けっぱなしだと、次に別のラベルを
       # 付け直したときに再発火して同じ実装を二度走らせる。
