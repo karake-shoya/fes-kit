@@ -47,6 +47,13 @@ jobs:
           # トークンへ交換しようとし、`id-token: write` 権限が無いため3回リトライして失敗する
           # （2026-08-20 の初回実行で実測）。App を入れていないので GITHUB_TOKEN を直接渡す。
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # 🔴 既定では Bash が許可されていない。指定しないと `gh issue view` も `npm run test` も
+          # 拒否され、Claude は3ターンで諦めて「何もせず success」で終わる（2026-08-20 実測。
+          # permission_denials_count=2）。実装には Bash・Edit・Write が要る。
+          # --max-turns は暴走時のブレーキ。timeout-minutes より先に効かせる。
+          claude_args: |
+            --allowedTools Bash,Edit,Write,Read,Glob,Grep
+            --max-turns 80
           # prompt を渡すと agent モードになり、`@claude` メンション無しで即実行する。
           #
           # 🔴 Issue の本文をこの prompt に埋め込まない。fes-kit は public で誰でも Issue を書けるため、
@@ -83,17 +90,36 @@ jobs:
             - Issue に書かれていないことを推測で実装しない。
             - 情報が足りず実装できないときは、PR を立てずに Issue へ「何が足りないか」をコメントして終了する。
             - コミットメッセージ・コメント・PR 本文はすべて日本語。
+        env:
+          # Claude が Bash から叩く gh の認証。これが無いと `gh issue view` が失敗する。
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # action は失敗の理由を伏せて `is_error:true` としか出さない（2026-08-20 実測）。
-      # 原因を追えないと手が止まるので、実行ログから result の本文だけを取り出して残す。
-      # 出すのは result と error 系のイベントだけ。会話全文は出さない。
-      - name: Claude の実行結果を取り出す
-        if: failure()
+      # さらに悪いことに、ツールを拒否されて何もできなかった実行も success で終わる
+      # （同日 実測。permission_denials_count=2 で PR もコメントも作られないまま緑になった）。
+      # 静かな空振りを緑にしないため、成否によらず結果を取り出し、拒否があれば落とす。
+      # 出すのは result イベントの要約だけ。会話全文は出さない。
+      - name: Claude の実行結果を確かめる
+        if: always()
         run: |
           f=/home/runner/work/_temp/claude-execution-output.json
           if [ ! -f "$f" ]; then echo "実行ログが無い（Claude が起動する前に落ちた）"; exit 0; fi
-          jq -r '.[]? // . | select(.type == "result") | "subtype=\(.subtype) is_error=\(.is_error)\n本文: \(.result // .error // "（本文なし）")"' "$f" 2>/dev/null \
-            || { echo "jq で解析できなかった。生の先頭2000文字:"; head -c 2000 "$f"; }
+
+          r=$(jq -c '[.[]? // .] | map(select(.type == "result")) | last' "$f" 2>/dev/null || echo null)
+          if [ "$r" = "null" ] || [ -z "$r" ]; then
+            echo "result イベントが無い。生の先頭2000文字:"; head -c 2000 "$f"; exit 0
+          fi
+
+          echo "is_error   : $(jq -r '.is_error'  <<<"$r")"
+          echo "ターン数   : $(jq -r '.num_turns' <<<"$r")"
+          echo "拒否された数: $(jq -r '.permission_denials_count // 0' <<<"$r")"
+          echo "本文       : $(jq -r '.result // .error // "（本文なし）"' <<<"$r")"
+
+          denials=$(jq -r '.permission_denials_count // 0' <<<"$r")
+          if [ "$denials" -gt 0 ]; then
+            echo "::error::ツールが $denials 回拒否された。claude_args の --allowedTools を見直す"
+            exit 1
+          fi
 
       # 実装の成否にかかわらずラベルを外す。付けっぱなしだと、次に別のラベルを
       # 付け直したときに再発火して同じ実装を二度走らせる。
