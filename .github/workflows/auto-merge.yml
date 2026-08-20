@@ -1,0 +1,102 @@
+name: 自動マージ
+
+# Claude が立てた PR を、CI が緑で、かつ Shoya が `auto-merge` ラベルを付けたときだけ main へ入れる。
+# ラベル付与が承認そのもの＝生成物が無検査で main に入ることはない。
+#
+# GitHub ネイティブの auto-merge を使わない理由:
+# ネイティブ機能はブランチ保護が前提だが、後で広げる kumanaku / poporu-village は
+# private かつ Free プランで保護機能自体が使えない（API が 403 を返す）。
+# 判定を workflow 側に置けば、5リポすべてで同じ仕組みを使える。
+on:
+  pull_request:
+    types: [labeled, synchronize]
+  check_suite:
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      # ラベルが CI 完了より先に付く場合と後に付く場合の両方があるため、トリガーが2つある。
+      # どちらから来ても「これから判定する PR 番号の一覧」に正規化する。
+      - name: 対象の PR 番号を集める
+        id: collect
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          SUITE_PRS: ${{ toJSON(github.event.check_suite.pull_requests) }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "pull_request" ]; then
+            numbers="$PR_NUMBER"
+          else
+            numbers=$(printf '%s' "$SUITE_PRS" | jq -r '.[].number' | tr '\n' ' ')
+          fi
+          echo "numbers=$numbers" >> "$GITHUB_OUTPUT"
+          echo "判定対象: ${numbers:-なし}"
+
+      # 7条件をすべて満たしたときだけマージする（fail closed）。
+      # 1つでも欠けたら理由をログに残して何もしない。ジョブは失敗させない
+      # ＝「まだ条件が揃っていない」は異常ではなく、次のイベントで再判定されるため。
+      - name: 条件を判定してマージする
+        if: steps.collect.outputs.numbers != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBERS: ${{ steps.collect.outputs.numbers }}
+        run: |
+          set -euo pipefail
+
+          skip() { echo "PR #$1 はマージしない: $2"; }
+
+          for n in $NUMBERS; do
+            pr=$(gh pr view "$n" --repo "$REPO" \
+              --json state,isDraft,baseRefName,headRefName,labels,mergeable)
+
+            # 条件1: open かつ draft でない
+            [ "$(jq -r .state <<<"$pr")" = "OPEN" ] || { skip "$n" "open ではない"; continue; }
+            [ "$(jq -r .isDraft <<<"$pr")" = "false" ] || { skip "$n" "draft である"; continue; }
+
+            # 条件2: base が main
+            [ "$(jq -r .baseRefName <<<"$pr")" = "main" ] || { skip "$n" "base が main ではない"; continue; }
+
+            # 条件3: head ブランチが claude/ 始まり
+            # 人が手で作った PR をこの仕組みで自動マージしないための線引き。
+            head=$(jq -r .headRefName <<<"$pr")
+            case "$head" in
+              claude/*) ;;
+              *) skip "$n" "head ブランチ $head が claude/ で始まらない"; continue ;;
+            esac
+
+            # 条件4: auto-merge ラベルが付いている（＝Shoya の承認）
+            jq -e '.labels[] | select(.name == "auto-merge")' <<<"$pr" >/dev/null \
+              || { skip "$n" "auto-merge ラベルが無い"; continue; }
+
+            # 条件5: コンフリクトしていない
+            [ "$(jq -r .mergeable <<<"$pr")" = "MERGEABLE" ] \
+              || { skip "$n" "マージできない状態（$(jq -r .mergeable <<<"$pr")）"; continue; }
+
+            # チェックの状態を取る。gh pr checks は check run と commit status の
+            # 両方を1つの一覧にまとめるので、Vercel のようにステータスで報告する
+            # 仕組みも取りこぼさない。チェックが1つも無いときは非ゼロで終わるため || true で受ける。
+            checks=$(gh pr checks "$n" --repo "$REPO" --json name,bucket 2>/dev/null || true)
+            [ -n "$checks" ] || { skip "$n" "チェックが1件も報告されていない"; continue; }
+
+            # 条件6: verify（lint / test / build）が成功している
+            jq -e '.[] | select(.name == "verify" and .bucket == "pass")' <<<"$checks" >/dev/null \
+              || { skip "$n" "verify が成功していない"; continue; }
+
+            # 条件7: 失敗・保留・キャンセルのチェックが1つも無い
+            blocking=$(jq -r '[.[] | select(.bucket == "fail" or .bucket == "pending" or .bucket == "cancel") | .name] | join(", ")' <<<"$checks")
+            # ${} で囲む理由: 直後が全角括弧のため、ロケールによっては bash が
+            # マルチバイトの先頭バイトまで変数名に取り込み unbound variable で落ちる（実測）。
+            [ -z "$blocking" ] || { skip "$n" "未完了または失敗のチェックがある（${blocking}）"; continue; }
+
+            echo "PR #$n は7条件をすべて満たした。squash でマージする"
+            gh pr merge "$n" --repo "$REPO" --squash --delete-branch
+          done

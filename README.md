@@ -278,7 +278,7 @@ feskit の律速は着手ではなく**検証**にあります。Clerk 認証後
 
 | 層 | 何を保証するか | 鍵の要否 | 実行場所 |
 |---|---|---|---|
-| CI（`.github/workflows/ci.yml`） | 型・lint・ユニットテスト・本番ビルドが通る | 不要 | GitHub Actions（PR と main への push） |
+| CI（`.github/workflows/ci.yml`） | 型・lint・ユニットテスト・本番ビルドが通る | 不要 | GitHub Actions（PR、main と `claude/**` への push） |
 | E2E（`playwright.config.ts` + `e2e/`） | 画面が実際に表示され、操作できる | 必要 | 手元から実行（CI 未接続） |
 
 **CI は画面の見た目と操作を保証しません。** そこは E2E の担当です。
@@ -361,6 +361,34 @@ dev サーバーの `ANTHROPIC_BASE_URL` をそこへ向けています。
 **E2E はブラウザエンジンであって実機ではありません。** iOS Safari 固有の描画差は残るので、
 **見た目は初回だけ実機で見て、以後の回帰を E2E が守る**という分担にしています。
 実機で一度だけ見る項目は TODO.md に列挙しています。
+
+---
+
+## Issue から PR、マージまでの自動化
+
+Issue にラベルを付けると Claude が実装して PR を立て、承認ラベルを付けるとマージまで進みます。
+2026-08-20 に導入しました。個人開発リポのうち feskit だけで先行して動かしています。
+
+| ラベル | 付ける先 | 意味 |
+|---|---|---|
+| `claude` | Issue | この Issue を実装して PR を立てる。**PR が立つと自動で外れる** |
+| `auto-merge` | PR | CI が緑になったらマージしてよい。**これが承認にあたる** |
+
+```
+Issue に `claude` を付ける
+  → claude-issue-to-pr.yml が実装し claude/issue-<番号>-<slug> ブランチで PR を立てる
+    → ci.yml が verify を付ける
+      → PR に `auto-merge` を付ける
+        → auto-merge.yml が7条件を判定して squash マージ
+```
+
+⚠ **`auto-merge` を付けなければ PR はマージされません。** 放置は安全側に倒れます。
+
+🔴 **`ci.yml` の `push` から `claude/**` を消さないでください。**
+GITHUB_TOKEN が作った PR は `pull_request` ワークフローを発火させないため、
+この行が無いと `verify` が一度も付かず自動マージが静かに止まります。
+
+マージの7条件・止め方・設計の経緯は [`.claude/docs/自動PR運用.md`](.claude/docs/自動PR運用.md)。
 
 ---
 
