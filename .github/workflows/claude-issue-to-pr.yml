@@ -43,6 +43,10 @@ jobs:
           # Max プランの枠で動く。API 従量課金は発生しない代わりに Shoya の5時間ウィンドウを消費する。
           # 生成は `claude setup-token` で行い、値は Secrets にしか置かない。
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # 🔴 github_token を明示しないと、action は OIDC トークンを Claude GitHub App の
+          # トークンへ交換しようとし、`id-token: write` 権限が無いため3回リトライして失敗する
+          # （2026-08-20 の初回実行で実測）。App を入れていないので GITHUB_TOKEN を直接渡す。
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           # prompt を渡すと agent モードになり、`@claude` メンション無しで即実行する。
           #
           # 🔴 Issue の本文をこの prompt に埋め込まない。fes-kit は public で誰でも Issue を書けるため、
