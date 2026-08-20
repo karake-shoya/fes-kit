@@ -84,6 +84,17 @@ jobs:
             - 情報が足りず実装できないときは、PR を立てずに Issue へ「何が足りないか」をコメントして終了する。
             - コミットメッセージ・コメント・PR 本文はすべて日本語。
 
+      # action は失敗の理由を伏せて `is_error:true` としか出さない（2026-08-20 実測）。
+      # 原因を追えないと手が止まるので、実行ログから result の本文だけを取り出して残す。
+      # 出すのは result と error 系のイベントだけ。会話全文は出さない。
+      - name: Claude の実行結果を取り出す
+        if: failure()
+        run: |
+          f=/home/runner/work/_temp/claude-execution-output.json
+          if [ ! -f "$f" ]; then echo "実行ログが無い（Claude が起動する前に落ちた）"; exit 0; fi
+          jq -r '.[]? // . | select(.type == "result") | "subtype=\(.subtype) is_error=\(.is_error)\n本文: \(.result // .error // "（本文なし）")"' "$f" 2>/dev/null \
+            || { echo "jq で解析できなかった。生の先頭2000文字:"; head -c 2000 "$f"; }
+
       # 実装の成否にかかわらずラベルを外す。付けっぱなしだと、次に別のラベルを
       # 付け直したときに再発火して同じ実装を二度走らせる。
       - name: claude ラベルを外す
