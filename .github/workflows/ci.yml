@@ -4,15 +4,14 @@ name: CI
 # ここが緑なら「型・lint・ユニットテスト・本番ビルドは通っている」ことだけが保証される。
 # 画面の見た目と操作は保証しない（それは E2E の担当）。
 #
-# 🔴 push に claude/** が要る理由:
-# GITHUB_TOKEN で作られた PR は pull_request ワークフローを発火させない（GitHub の無限ループ防止）。
-# claude-issue-to-pr.yml が立てた PR はこれに当たるため、pull_request だけだと CI が一度も回らず、
-# auto-merge.yml の「verify が成功している」条件が永久に満たされない。
-# ブランチへの push で verify を head SHA に付けることで、その穴を塞いでいる。
+# claude/** を push トリガーから外した理由（2026-08-20）:
+# GITHUB_TOKEN 時代の回避策だった。Claude GitHub App のトークンで動かすようになり、
+# App が立てた PR は pull_request を正常に発火させるので不要になった。
+# 残しておくと push と pull_request で verify が二重に走る（実測で確認）。
 on:
   pull_request:
   push:
-    branches: [main, 'claude/**']
+    branches: [main]
 
 # 人が作った PR では push と pull_request が二重に走る。古い実行を打ち切って
 # Actions の実行時間を無駄にしない。
