@@ -19,7 +19,11 @@ permissions:
   checks: read
 
 jobs:
-  merge:
+  # 🔴 ジョブ名がそのままチェック名になる。このジョブ自身も対象 PR のチェックとして現れるため、
+  # 条件7（保留のチェックが1つも無い）で自分に引っかかって永久にマージされない
+  # （2026-08-20 実測。「未完了または失敗のチェックがある（merge）」で止まった）。
+  # 名前を一意にしたうえで、条件7から自分だけを除外している。
+  auto-merge-gate:
     runs-on: ubuntu-latest
     steps:
       # ラベルが CI 完了より先に付く場合と後に付く場合の両方があるため、トリガーが2つある。
@@ -49,6 +53,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           NUMBERS: ${{ steps.collect.outputs.numbers }}
+          # このジョブ自身のチェック名。条件7から除外する対象。
+          SELF: ${{ github.job }}
         run: |
           set -euo pipefail
 
@@ -91,8 +97,8 @@ jobs:
             jq -e '.[] | select(.name == "verify" and .bucket == "pass")' <<<"$checks" >/dev/null \
               || { skip "$n" "verify が成功していない"; continue; }
 
-            # 条件7: 失敗・保留・キャンセルのチェックが1つも無い
-            blocking=$(jq -r '[.[] | select(.bucket == "fail" or .bucket == "pending" or .bucket == "cancel") | .name] | join(", ")' <<<"$checks")
+            # 条件7: 失敗・保留・キャンセルのチェックが1つも無い（自分自身は除く）
+            blocking=$(jq -r --arg self "$SELF" '[.[] | select(.name != $self) | select(.bucket == "fail" or .bucket == "pending" or .bucket == "cancel") | .name] | join(", ")' <<<"$checks")
             # ${} で囲む理由: 直後が全角括弧のため、ロケールによっては bash が
             # マルチバイトの先頭バイトまで変数名に取り込み unbound variable で落ちる（実測）。
             [ -z "$blocking" ] || { skip "$n" "未完了または失敗のチェックがある（${blocking}）"; continue; }
