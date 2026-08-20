@@ -3,10 +3,22 @@ name: CI
 # PR に緑ランプを付けるための最低限の関門。
 # ここが緑なら「型・lint・ユニットテスト・本番ビルドは通っている」ことだけが保証される。
 # 画面の見た目と操作は保証しない（それは E2E の担当）。
+#
+# 🔴 push に claude/** が要る理由:
+# GITHUB_TOKEN で作られた PR は pull_request ワークフローを発火させない（GitHub の無限ループ防止）。
+# claude-issue-to-pr.yml が立てた PR はこれに当たるため、pull_request だけだと CI が一度も回らず、
+# auto-merge.yml の「verify が成功している」条件が永久に満たされない。
+# ブランチへの push で verify を head SHA に付けることで、その穴を塞いでいる。
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, 'claude/**']
+
+# 人が作った PR では push と pull_request が二重に走る。古い実行を打ち切って
+# Actions の実行時間を無駄にしない。
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:

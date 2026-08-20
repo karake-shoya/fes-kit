@@ -55,4 +55,4 @@
 
 - **poporu 側に専用メモリは無い。** 正は**このリポ**にあり、2箇所に分かれる。**次セッションでやること＝`.claude/docs/TODO.md`**、**設計・調査の記録＝リポ直下の `docs/`**。Monthly Ship としての位置づけ・採算の方針は `~/poporu/memory/private/monthly-ship.md`。
 - **journal の領域名**: `feskit`
-- 🔴 **作業を終えたら poporu の当日 journal へ1ファイル書く。書式と規則の正はグローバル `~/.claude/CLAUDE.md` の「薄いポポル」節。** ここには写さない（写すと腐る）。⚠ **スマホ（クラウド）では `~/.claude/` が読まれないので、`poporu` も一緒に選ぶ**（そのときの正は `poporu/CLAUDE.md` の横断メカニズム8）。
+- 🔴 **作業を終えたら poporu の当日 journal へ1ファイル書く。書式と規則の正はグローバル `~/.claude/CLAUDE.md` の「薄いポポル」節。** ここには写さない（写すと腐る）。⚠ **スマホ（クラウド）では `~/.claude/` が読まれないので、`poporu` も一緒に選ぶ**（そのときの正は `poporu/CLAUDE.md` の横断メカニズム「定時ルーチンと薄いポポル」節）。
