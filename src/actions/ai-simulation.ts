@@ -1,7 +1,6 @@
 "use server";
 
 import { generateObject } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
 import { z } from "zod";
 import { requireProjectRole } from "@/lib/auth";
 import { getBreakevenInput } from "@/db/queries/simulation";
@@ -12,13 +11,7 @@ import {
   type ScenarioLineInput,
 } from "@/lib/breakeven";
 import { formatYen } from "@/lib/format";
-
-// AI 採算診断の使用モデル（Claude API 直・安価/高速）。おすすめ販売価格と同じ。
-const MODEL = anthropic("claude-haiku-4-5");
-
-// 価格の最小値・刻み（0円やハンパな額を避ける）
-const PRICE_FLOOR = 10;
-const PRICE_STEP  = 10;
+import { MODEL, assertAiConfigured, buildProjectLines, roundPrice } from "@/lib/ai-pricing";
 
 /**
  * AI に返させるもの。
@@ -72,10 +65,7 @@ export type SimulationAdvice = {
  */
 export async function suggestSimulation(projectId: string): Promise<SimulationAdvice> {
   await requireProjectRole(projectId);
-
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error("AI機能が未設定です（ANTHROPIC_API_KEY）");
-  }
+  assertAiConfigured();
 
   const input = await getBreakevenInput(projectId);
 
@@ -87,13 +77,7 @@ export async function suggestSimulation(projectId: string): Promise<SimulationAd
 
   const project = await getProjectContext(projectId);
 
-  const projectLines = project
-    ? [
-        `出店・イベント名：${project.name}`,
-        project.description ? `出店の説明・メモ：${project.description}` : null,
-        project.eventDate   ? `イベント日：${project.eventDate}` : null,
-      ].filter((v): v is string => v !== null)
-    : [];
+  const projectLines = buildProjectLines(project);
 
   const recipeLines = targets.map(
     (r) =>
@@ -134,7 +118,6 @@ export async function suggestSimulation(projectId: string): Promise<SimulationAd
   // ---- ここから検算。AIの出力をそのまま信じない ----
 
   const byRecipeId = new Map(targets.map((r) => [r.recipeId, r]));
-  const round10 = (n: number) => Math.max(PRICE_FLOOR, Math.round(n / PRICE_STEP) * PRICE_STEP);
 
   const items: AdviceItem[] = [];
   const dropped: { name: string; reason: string }[] = [];
@@ -146,7 +129,7 @@ export async function suggestSimulation(projectId: string): Promise<SimulationAd
     // 同じ商品を2度返してきた場合は最初の1件だけ採る
     if (items.some((i) => i.recipeId === recipe.recipeId)) continue;
 
-    const sellingPrice = round10(raw.sellingPrice);
+    const sellingPrice = roundPrice(raw.sellingPrice);
     const quantity     = Math.max(0, Math.floor(raw.quantity));
 
     // 原価割れはその商品だけ外す（売るほど損をする案を混ぜたまま合計を出さない）。

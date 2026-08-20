@@ -1,19 +1,12 @@
 "use server";
 
 import { generateObject } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
 import { z } from "zod";
 import { requireProjectRole } from "@/lib/auth";
 import { getRecipeWithCost } from "@/db/queries/recipes";
 import { getProjectContext } from "@/db/queries/projects";
 import { formatYen } from "@/lib/format";
-
-// AI おすすめ販売価格の使用モデル（Claude API 直・安価/高速）
-// ANTHROPIC_API_KEY を環境変数から自動で読み取る。
-const MODEL = anthropic("claude-haiku-4-5");
-
-// 価格の最小値（0円・マイナスを避ける）
-const PRICE_FLOOR = 10;
+import { MODEL, assertAiConfigured, buildProjectLines, roundPrice } from "@/lib/ai-pricing";
 
 // AI 提案の構造化出力スキーマ（Zod）。数字はすべて円・%。
 const suggestionSchema = z.object({
@@ -33,10 +26,7 @@ export async function suggestSellingPrice(
   projectId: string
 ): Promise<PriceSuggestion> {
   await requireProjectRole(projectId);
-
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error("AI機能が未設定です（ANTHROPIC_API_KEY）");
-  }
+  assertAiConfigured();
 
   const data = await getRecipeWithCost(recipeId, projectId);
   if (!data) throw new Error("レシピが見つかりません");
@@ -55,13 +45,7 @@ export async function suggestSellingPrice(
     .join("\n");
 
   // プロジェクト名・説明・イベント日があればコンテキスト行として差し込む
-  const projectLines = project
-    ? [
-        `出店・イベント名：${project.name}`,
-        project.description ? `出店の説明・メモ：${project.description}` : null,
-        project.eventDate ? `イベント日：${project.eventDate}` : null,
-      ].filter((v): v is string => v !== null)
-    : [];
+  const projectLines = buildProjectLines(project);
 
   const prompt = [
     "あなたはイベント・マルシェ・お祭りなどのフード出店の値付けを手伝うアドバイザーです。",
@@ -86,11 +70,10 @@ export async function suggestSellingPrice(
   });
 
   // 念のため円は整数・10円単位に丸め、原価率は整数へ整える（表示の安定化）
-  const round10 = (n: number) => Math.max(PRICE_FLOOR, Math.round(n / 10) * 10);
   return {
-    recommendedPrice: round10(object.recommendedPrice),
-    priceRangeMin: round10(object.priceRangeMin),
-    priceRangeMax: round10(object.priceRangeMax),
+    recommendedPrice: roundPrice(object.recommendedPrice),
+    priceRangeMin: roundPrice(object.priceRangeMin),
+    priceRangeMax: roundPrice(object.priceRangeMax),
     targetCostRate: Math.round(object.targetCostRate),
     reason: object.reason,
   };
