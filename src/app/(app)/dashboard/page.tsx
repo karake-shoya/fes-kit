@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/app/app-header";
 import { PageMain } from "@/components/app/page-shell";
 import { ProjectCard, type ProjectRow } from "@/components/app/project-card";
 import { ChangelogSection } from "@/components/app/changelog-section";
+import { LegalFooter } from "@/components/app/legal-footer";
 import { todayYmd } from "@/lib/format";
 
 // イベントが近いものを上に並べる。
@@ -90,6 +91,7 @@ export default async function DashboardPage() {
         )}
 
         <ChangelogSection />
+        <LegalFooter />
       </PageMain>
     </>
   );
