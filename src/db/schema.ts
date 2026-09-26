@@ -14,6 +14,11 @@ export const users = sqliteTable("users", {
   email:     text("email").notNull().unique(),
   name:      text("name"),
   avatarUrl: text("avatar_url"),
+  // 有料プラン（月額500円のサブスクリプション）の課金状態。Stripe WebhookでUPDATE。
+  // どの機能を有料にするかはここでは決めない（#50は課金の土台のみ）
+  stripeCustomerId:   text("stripe_customer_id").unique(), // Stripe Checkout完了で確定
+  subscriptionStatus: text("subscription_status"),         // Stripeのsubscription.status（active/canceled等）をそのまま保存
+  currentPeriodEnd:   text("current_period_end"),           // 現在の契約期間の終了日時（ISO8601）
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });

@@ -50,6 +50,13 @@
       "when": 1786236094344,
       "tag": "0006_nostalgic_mulholland_black",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1790466750991,
+      "tag": "0007_thin_mercury",
+      "breakpoints": true
     }
   ]
 }

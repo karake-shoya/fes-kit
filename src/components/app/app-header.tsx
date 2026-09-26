@@ -1,7 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CreditCard } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
+import { isBillingConfigured } from "@/lib/billing";
 
 type Props = {
   /** ヘッダーに表示するタイトル */
@@ -48,7 +49,17 @@ export function AppHeader({ title, backHref, subtitle, action }: Props) {
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {action}
-          <UserButton />
+          <UserButton>
+            {isBillingConfigured() && (
+              <UserButton.MenuItems>
+                <UserButton.Link
+                  label="有料プラン"
+                  href="/account/billing"
+                  labelIcon={<CreditCard className="h-4 w-4" />}
+                />
+              </UserButton.MenuItems>
+            )}
+          </UserButton>
         </div>
       </div>
     </header>
