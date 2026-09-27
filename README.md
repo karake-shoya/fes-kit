@@ -16,6 +16,7 @@
 | 言語 | TypeScript | strict mode |
 | UI | shadcn/ui + Radix UI + Tailwind CSS v4 | アイコンは lucide-react、フォントは Figtree（欧文）+ Zen Maru Gothic（和文） |
 | 認証 | Clerk (`@clerk/nextjs` v7) | Webhookでユーザーを同期 |
+| 課金 | Stripe (`stripe`) | サブスクリプション（月額500円）。Webhookで契約状態を同期（後述） |
 | DB | Turso (libSQL / SQLite互換) | Embedded Replica対応 |
 | ORM | Drizzle ORM | |
 | ストレージ | Cloudflare R2 (S3互換) | 試作写真のアップロード |
@@ -53,6 +54,7 @@
 | スケジュール管理 | ✅ | カレンダー／一覧表示、日付タップで当日の予定をボトムシート表示、月フィルタ、スワイプ削除、ステータス管理 |
 | 試作品記録 | ✅ | 試作日・結果（good / needs_improvement / failed）・メモ・写真（R2） |
 | 共有機能（招待リンク） | ✅ | オーナーがロール付きURLを発行（72時間有効・1回使い切り）。コピー／OS共有シート対応 |
+| 有料プラン（課金の土台） | ✅ | Stripe Checkoutで月額500円に申し込み、カスタマーポータルで解約・支払い方法を変更（後述）。機能ごとの有料制御は別Issue |
 | 更新履歴 | ✅ | ダッシュボードに機能追加のお知らせを一覧表示（`src/lib/changelog.ts` に手動で追記） |
 | 法的ページ | ✅ | 特定商取引法に基づく表記・利用規約・プライバシーポリシーをログイン不要で表示（`/legal/*`）。事業者情報は準備が整い次第記入するひな形（後述） |
 | エラー時の復帰 | ✅ | 予期しないエラーでも白画面にせず、やさしい案内と「やりなおす」を出す（`src/app/(app)/error.tsx`） |
@@ -77,10 +79,12 @@
 /projects/[id]/prototypes               試作記録
 /projects/[id]/settings                 プロジェクト設定（招待リンクの発行を含む）
 /invite/[token]                         招待リンクの受諾（要ログイン）
+/account/billing                        有料プランの申し込み・解約（要ログイン）
 /legal/tokushoho                        特定商取引法に基づく表記（ログイン不要）
 /legal/terms                            利用規約（ログイン不要）
 /legal/privacy                          プライバシーポリシー（ログイン不要）
 /api/webhooks/clerk                     Clerk Webhook 受信
+/api/webhooks/stripe                    Stripe Webhook 受信
 ```
 
 プロジェクト配下の画面には**下部タブバー**（ホーム／材料／レシピ／予定／試作）を常設し、
@@ -287,6 +291,33 @@ DBがリモート（Turso）にあるため、クエリの完了を待って画�
   サインイン/サインアップ画面へのリンクは `src/components/app/legal-footer.tsx`（`<LegalFooter>`）に共通化し、
   どの画面からも辿れるようにしています。
 
+### 有料プラン（Stripe・#50）
+
+月額500円のサブスクリプションを、ユーザー自身が申し込み・解約できます。
+**この段階では「課金の土台」だけ**で、どの機能を有料にするかは別Issueで扱います。
+
+- `users` テーブルに `stripeCustomerId` / `subscriptionStatus` / `currentPeriodEnd` を持ち、
+  Stripe Webhookが更新します（マイグレーション適用はオーナーが行うため未実施）。
+- 申し込みは Stripe Checkout（`mode: "subscription"`）、解約・支払い方法の変更は
+  Stripeカスタマーポータルへ遷移します。どちらも `src/actions/billing.ts` のServer Actionで、
+  `<form action={...}>` からの遷移でリダイレクトします（クライアントJS不要）。
+- 画面は `/account/billing`。ヘッダー右上の `UserButton` のメニューから開けます
+  （`src/components/app/app-header.tsx`）。
+- Webhookは `src/app/api/webhooks/stripe/route.ts`。署名検証（`stripe-signature`）は
+  `src/app/api/webhooks/clerk` と同じく `src/proxy.ts` の公開ルートに追加して認証の対象外にしています。
+  受け取ったイベントから「usersテーブルへ何を書くか」だけを組み立てる純粋関数
+  `billingUpdateFromEvent`（`src/lib/stripe-webhook.ts`）と、実際のDB書き込みを行うルートハンドラを
+  分けているため、DBを使わずにイベントごとの状態更新をテストできます
+  （`checkout.session.completed` で顧客IDを結びつけ、`customer.subscription.updated` /
+  `customer.subscription.deleted` で契約状態と契約期間を更新）。
+- 課金中かどうかの判定は `isSubscriptionActive()`（`src/lib/billing.ts`）に閉じ込めています。
+  「有効」「解約済み」「期限切れ（statusはactiveのままcurrentPeriodEndを過ぎている）」
+  「未登録」の4パターンをテストしています。
+- `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_ID` が1つでも未設定なら
+  課金のUI（`/account/billing` とヘッダーメニュー項目）を出しません
+  （`isBillingConfigured` / `assertBillingConfigured`。`src/lib/ai-pricing.ts` の
+  `assertAiConfigured` と同じ考え方）。
+
 ---
 
 ## テストとCI（何がどこまで守られているか）
@@ -416,11 +447,12 @@ push も PR も一切ワークフローを発火させないため、App を外�
 ```
 src/
 ├── actions/        Server Actions（project, ingredient, recipe, schedule, prototype, upload,
-│                   expense, scenario, sales-record, checklist, invitation, ai-price, ai-simulation）
+│                   expense, scenario, sales-record, checklist, invitation, ai-price, ai-simulation, billing）
 ├── app/
-│   ├── (app)/      認証必須のアプリ画面（dashboard, projects/...）
+│   ├── (app)/      認証必須のアプリ画面（dashboard, projects/..., account/billing）
 │   ├── (auth)/     サインイン・サインアップ
 │   ├── api/webhooks/clerk/   Clerk Webhook ルート
+│   ├── api/webhooks/stripe/  Stripe Webhook ルート
 │   ├── manifest.ts / icon.tsx / apple-icon.tsx   PWA・アイコン
 ├── components/
 │   ├── app/        画面固有コンポーネント（ダイアログ・カレンダー・編集UI 等）
@@ -432,7 +464,7 @@ src/
 │   ├── schema.ts   Drizzle スキーマ定義
 │   ├── db.ts       libSQL クライアント（Embedded Replica対応・シングルトン）
 │   └── queries/    テーブル別クエリ関数
-├── lib/            ユーティリティ（auth, revalidate, r2, recipe-cost, schedule, format 等）
+├── lib/            ユーティリティ（auth, revalidate, r2, recipe-cost, schedule, format, billing, stripe 等）
 │                   *.test.ts が隣に並ぶ（純粋ロジックのみ）
 └── proxy.ts        Clerk ミドルウェア（公開ルート以外を保護）
 
@@ -500,6 +532,14 @@ NEXT_PUBLIC_R2_PUBLIC_URL=https://...  # バケットの公開URLベース
 # 未設定でもアプリは動作し、AIボタンのみ非表示になる。
 ANTHROPIC_API_KEY=sk-ant-...
 
+# 課金（有料プラン・任意）
+# Stripeダッシュボードで発行。3つのうち1つでも未設定だと課金のUIが非表示になる。
+STRIPE_SECRET_KEY=sk_test_...
+# Webhookエンドポイント（/api/webhooks/stripe）の署名シークレット
+STRIPE_WEBHOOK_SECRET=whsec_...
+# 月額500円プランのPrice ID（Stripeダッシュボードの商品で作成）
+STRIPE_PRICE_ID=price_...
+
 # E2E（Playwright・任意）
 # 宛先。未設定ならローカルの dev サーバー（http://localhost:3456）を専用DB付きで自動起動する。
 # ポートが埋まっているときだけ別の値を渡す。
@@ -534,6 +574,14 @@ npm run dev
 `users` テーブルは Clerk の Webhook（`user.created` / `user.updated` / `user.deleted`）で同期します。
 Clerk ダッシュボードで `/api/webhooks/clerk` をエンドポイントに登録し、署名シークレットを
 `CLERK_WEBHOOK_SECRET` に設定してください。ローカルでは Clerk のローカル転送機能などを利用します。
+
+### 6. Stripe Webhook（任意・有料プラン）
+
+`users` テーブルの課金状態（`stripeCustomerId` / `subscriptionStatus` / `currentPeriodEnd`）は
+Stripe の Webhook（`checkout.session.completed` / `customer.subscription.updated` /
+`customer.subscription.deleted`）で同期します。Stripe ダッシュボードで `/api/webhooks/stripe` を
+エンドポイントに登録し、署名シークレットを `STRIPE_WEBHOOK_SECRET` に設定してください。
+ローカルでは Stripe CLI（`stripe listen --forward-to localhost:3000/api/webhooks/stripe`）などを利用します。
 
 ---
 
